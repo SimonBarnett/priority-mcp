@@ -68,6 +68,7 @@ var checks = new List<(string Name, Action Run)>
     ("FR-610: redirected customer pick 2 selects first customer", TestFr610CustomerRedirectedFirst),
     ("FR-615: ListCustomers wraps gh api with ConsoleWait.WithWait", TestFr615ListCustomersUsesWithWait),
     ("FR-615: ListCustomers failure path still Err + empty list", TestFr615ListCustomersFailurePathPin),
+    ("FR-642: ListCustomers gh failure throws inside WithWait (no done settle)", TestFr642ListCustomersFailThrowsForSettle),
 };
 int failures = 0;
 foreach (var (name, run) in checks)
@@ -1099,11 +1100,25 @@ static void TestFr615ListCustomersFailurePathPin()
     string src = ReadLauncherProgramSrc();
     int method = src.IndexOf("static List<Customer> ListCustomers()", StringComparison.Ordinal);
     Assert(method >= 0, "ListCustomers method missing");
-    string window = src.Substring(method, Math.Min(900, src.Length - method));
+    string window = src.Substring(method, Math.Min(2500, src.Length - method));
     Assert(window.Contains("gh api failed", StringComparison.Ordinal), "failure must Err with gh api failed");
     Assert(window.Contains("return new()", StringComparison.Ordinal) || window.Contains("return new List", StringComparison.Ordinal),
         "failure must return empty list");
     Assert(src.Contains("var customers = ListCustomers()", StringComparison.Ordinal), "--list / interactive still call ListCustomers");
+}
+
+static void TestFr642ListCustomersFailThrowsForSettle()
+{
+    string src = ReadLauncherProgramSrc();
+    int method = src.IndexOf("static List<Customer> ListCustomers()", StringComparison.Ordinal);
+    Assert(method >= 0, "ListCustomers method missing");
+    string window = src.Substring(method, Math.Min(2500, src.Length - method));
+    int wait = window.IndexOf("ConsoleWait.WithWait", StringComparison.Ordinal);
+    int err = window.IndexOf("Err(\"gh api failed", StringComparison.Ordinal);
+    int thr = window.IndexOf("throw new InvalidOperationException", StringComparison.Ordinal);
+    Assert(wait >= 0 && err > wait && thr > err, "Err then throw must run inside WithWait so settle skips done");
+    // Outer catch still returns empty list to callers (FR #615 acceptance).
+    Assert(window.Contains("catch (InvalidOperationException)", StringComparison.Ordinal), "catch outside WithWait returns empty");
 }
 
 static string NewTemp()
