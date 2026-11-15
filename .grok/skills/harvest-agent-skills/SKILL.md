@@ -220,3 +220,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - CustomerPick mirrors ProjectFolderPick (General/names/New + TryResolve); --general/--customer stay above the interactive PickList branch; do not fold merely-behind MERGEABLE tips (FR #4649)
 - FR #619 issue text may say git fetch origin/hours; live gate wait is webhook hours list GET --- wrap that path with HoursListFetch/WithWait; throw-inside-WithWait preserves no-done on failure
 - Docs FR README rewrite that CONFLICTS with WaitSpinner call-site paragraphs: keep Interactive UX structure and merge MCP/skills call sites into the call-sites list
+- Catalogue user-visible name is Priority MCP (page chrome + serverInfo.name); keep mcp.ntsa.uk host and Priority Agent download labels unchanged
