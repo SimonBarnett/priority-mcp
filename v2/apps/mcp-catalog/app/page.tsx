@@ -1,11 +1,12 @@
 import { headers } from 'next/headers';
 import { listSkills } from '../lib/catalog';
 import { catalogPublicOrigin } from '../lib/public-origin';
+import { resolvePriorityAgentDownload } from '../lib/priority-agent-download';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export default function Home() {
+export default async function Home() {
   const requestHeaders = headers();
   const origin = catalogPublicOrigin({
     host: requestHeaders.get('host'),
@@ -13,6 +14,12 @@ export default function Home() {
     proto: requestHeaders.get('x-forwarded-proto'),
   });
   const skills = listSkills();
+  let agentDownload: Awaited<ReturnType<typeof resolvePriorityAgentDownload>> = null;
+  try {
+    agentDownload = await resolvePriorityAgentDownload();
+  } catch {
+    agentDownload = null;
+  }
   return (
     <main>
       <h1>{new URL(origin).host}</h1>
@@ -21,6 +28,27 @@ export default function Home() {
         against instances the <strong>user</strong> allowlisted. This host does not compile forms and
         cannot see on-prem SQL.
       </p>
+      <h2>Priority Agent</h2>
+      {agentDownload ? (
+        <p>
+          <a href={agentDownload.exeUrl}>
+            <strong>Priority Agent</strong>
+          </a>
+          {' '}
+          <span>v{agentDownload.versionLabel}</span>
+          {agentDownload.sha256Url ? (
+            <>
+              {' · '}
+              <a href={agentDownload.sha256Url}>sha256</a>
+            </>
+          ) : null}
+        </p>
+      ) : (
+        <p>
+          <strong>Priority Agent</strong> download is temporarily unavailable (no GitHub release asset
+          named <code>PriorityAgent.exe</code>).
+        </p>
+      )}
       <h2>Add the MCP</h2>
       <pre>{`grok mcp add --transport http priority-catalog ${origin}/mcp`}</pre>
       <p>
