@@ -3,7 +3,7 @@ namespace PriorityAgent;
 /// <summary>
 /// FR #613: reusable console wait spinner (glyphs | / - \ on one line).
 /// Quiet when <see cref="Quiet"/> is set (e.g. --mcp-catalog) or output is redirected — no spinner
-/// writes (S5: MCP stdout stays JSON-RPC only). Call sites for clone/fetch/gh/fuel wired in later FRs.
+/// writes (S5: MCP stdout stays JSON-RPC only). Call site: ListCustomers gh api (FR #615); clone/fetch/fuel later.
 /// </summary>
 public interface IConsoleWaitIO
 {

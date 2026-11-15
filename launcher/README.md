@@ -13,7 +13,7 @@ Never use it on `--mcp-catalog` JSON-RPC stdout.
 `--customer rees` and `--general` skip the picker. With stdin redirected, a numeric line still picks
 (1 = General, 2 = first customer).
 
-**Console WaitSpinner (FR #613):** `ConsoleWait.WithWait` cycles `|/-\` on one TTY line while work runs (settles to "done"). Quiet when redirected or `--mcp-catalog` (`ConsoleWait.Quiet`). Call sites (clone/fetch/gh/fuel) are later FRs.
+**Console WaitSpinner (FR #613 / #615):** `ConsoleWait.WithWait` cycles `|/-\` on one TTY line while work runs (settles to "done"). Quiet when redirected or `--mcp-catalog` (`ConsoleWait.Quiet`). `ListCustomers` (gh api topic list, including `--list`) uses it; other call sites (clone/fetch/fuel) are later FRs.
 
 A per-machine **MSI** is an extra asset next to the existing `PriorityAgent.exe` pre-release (the loose
 exe stays). The MSI installs to `C:\Program Files\Priority Agent`. An interactive install offers
