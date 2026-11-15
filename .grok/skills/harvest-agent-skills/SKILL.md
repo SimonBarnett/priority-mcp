@@ -225,3 +225,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - Ship PriorityAgent.exe as non-prerelease: change launcher-release.yml to full release + gh release edit --prerelease=false --latest on the current launcher-v* tag so /releases/latest/download works
 - When a session-host FR conflicts with the picker that landed on main, compile both source files in the test project.
 - In top-level C# test Program.cs projects, put helper types (e.g. ScriptedPickIO) in their own .cs file --- a class among top-level statements hits CS8803
+- A FIX offer for an MRB-FAIL tip with a stacked fix PR pushes that commit onto the assigned branch and closes the companion.
