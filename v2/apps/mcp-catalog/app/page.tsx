@@ -35,13 +35,13 @@ export default async function Home() {
           </span>
           <span className="brand-text">
             <strong>{hostLabel}</strong>
-            <span>Priority skill catalog</span>
+            <span>Priority MCP</span>
           </span>
         </a>
         <nav className="nav" aria-label="Primary">
           <a href="https://bob.ntsa.uk/">bob.ntsa.uk</a>
           <a href="/" aria-current="page">
-            Catalog
+            Priority MCP
           </a>
           <a href="https://github.com/SimonBarnett/priority-mcp">GitHub</a>
         </nav>
@@ -49,10 +49,10 @@ export default async function Home() {
 
       <section className="hero">
         <div className="hero-copy">
-          <div className="eyebrow">Catalog MCP</div>
-          <h1>Skills the Priority agent knows how to grab.</h1>
+          <div className="eyebrow">Priority MCP</div>
+          <h1>Priority MCP</h1>
           <p>
-            Catalog MCP for Priority agent skills. Agents <strong>grab</strong> a skill here, then run
+            Priority MCP for Priority agent skills. Agents <strong>grab</strong> a skill here, then run
             it against instances the <strong>user</strong> allowlisted. This host does not compile
             forms and cannot see on-prem SQL.
           </p>

@@ -9,13 +9,13 @@ import {
 } from './skill-dag';
 
 const PROTOCOL = '2024-11-05';
-const SERVER = { name: 'mcp-priority', version: '1.1.1' };
+const SERVER = { name: 'Priority MCP', version: '1.1.1' };
 
 const TOOLS = [
   {
     name: 'list_catalog',
     description:
-      'List skills published on mcp-priority. Adding a folder under catalog/ with meta.json registers a new skill. This host does not compile Priority forms.',
+      'List skills published on Priority MCP. Adding a folder under catalog/ with meta.json registers a new skill. This host does not compile Priority forms.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   },
   {

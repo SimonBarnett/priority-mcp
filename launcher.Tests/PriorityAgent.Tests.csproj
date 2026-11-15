@@ -20,8 +20,15 @@
     <Compile Include="../launcher/CliChooser.cs" Link="CliChooser.cs" />
     <Compile Include="../launcher/ConsolePick.cs" Link="ConsolePick.cs" />
     <Compile Include="../launcher/ConsoleWait.cs" Link="ConsoleWait.cs" />
+    <Compile Include="../launcher/HoursListFetch.cs" Link="HoursListFetch.cs" />
+    <Compile Include="../launcher/FuelReportFetch.cs" Link="FuelReportFetch.cs" />
     <Compile Include="../launcher/ProjectFolderPick.cs" Link="ProjectFolderPick.cs" />
     <Compile Include="../launcher/CustomerPick.cs" Link="CustomerPick.cs" />
+    <Compile Include="../launcher/AircHost.cs" Link="AircHost.cs" />
+    <Compile Include="../launcher/AircHostFetch.cs" Link="AircHostFetch.cs" />
+    <Compile Include="../launcher/AircHostPick.cs" Link="AircHostPick.cs" />
+    <Compile Include="../launcher/AircSelection.cs" Link="AircSelection.cs" />
+    <Compile Include="../launcher/AircSlashCommand.cs" Link="AircSlashCommand.cs" />
     <Compile Include="../launcher/SessionLoginMeta.cs" Link="SessionLoginMeta.cs" />
     <None Include="fixtures/**/*" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../launcher/agent-rules.md" Link="fixtures/agent-rules.md" CopyToOutputDirectory="PreserveNewest" />

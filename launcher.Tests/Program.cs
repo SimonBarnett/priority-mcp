@@ -11,6 +11,7 @@ var checks = new List<(string Name, Action Run)>
     ("session instances file has no secrets", TestSessionInstancesNoSecrets),
     ("airc source files and template are gone", TestAircFilesGone),
     ("README documents WCF client only", TestReadmeWcfOnly),
+    ("FR-620: README documents Up/Down/Enter and wait glyphs", TestFr620ReadmeInteractiveUx),
     ("agent-rules use WCF_SECTION not AIRC_SECTION", TestAgentRulesWcfPlaceholder),
     ("command line size guard still works", TestCommandLineSize),
     ("dirty clone plus stub uses the dirty clone", TestDirtyClonePreferredOverStub),
@@ -58,6 +59,14 @@ var checks = new List<(string Name, Action Run)>
     ("FR-613: wait spinner preview has >=2 distinct glyphs", TestFr613WaitSpinnerGlyphs),
     ("FR-613: redirected / Quiet WithWait writes nothing", TestFr613WaitQuietNoWrites),
     ("FR-613: Program sets Quiet before --mcp-catalog serve", TestFr613McpCatalogSetsQuiet),
+    ("FR-619: hours fetch TTY spinner settles done on success", TestFr619HoursFetchTtyDone),
+    ("FR-619: hours fetch failure keeps detail and does not print done", TestFr619HoursFetchFailNoDone),
+    ("FR-619: hours fetch source wraps the GET; relaunch SKIP stays", TestFr619HoursFetchWired),
+    ("FR-618: MCP register and doctor wrap grok waits; doctor text stays", TestFr618McpRegisterDoctorWired),
+    ("FR-618: grok inspect skills check uses WithWait", TestFr618SkillsInspectWired),
+    ("FR-616: fuel report TTY spinner settles done on success", TestFr616FuelReportTtyDone),
+    ("FR-616: fuel report failure keeps detail and does not print done", TestFr616FuelReportFailNoDone),
+    ("FR-616: fuel report source wraps GET; --no-fuel-check and Continue stay", TestFr616FuelReportWired),
     ("MRB-633 hostile: WithWait on throw clears line and does not print done", TestMrb633WaitThrowNoDone),
     ("MRB-633 hostile: WithWait TTY emits glyphs then settle done", TestMrb633WaitTtyGlyphsAndSettle),
     ("FR-611: project PickList Down Enter selects first folder", TestFr611ProjectPickListFirstFolder),
@@ -68,6 +77,12 @@ var checks = new List<(string Name, Action Run)>
     ("FR-610: redirected customer pick 2 selects first customer", TestFr610CustomerRedirectedFirst),
     ("FR-615: ListCustomers wraps gh api with ConsoleWait.WithWait", TestFr615ListCustomersUsesWithWait),
     ("FR-615: ListCustomers failure path still Err + empty list", TestFr615ListCustomersFailurePathPin),
+    ("FR-635: digest fixture maps several hosts including domain", TestFr635ParseSeveralHosts),
+    ("FR-635: empty roster message without PickList", TestFr635EmptyRosterMessage),
+    ("FR-635: unreachable roster errors with retry hint", TestFr635UnreachableRoster),
+    ("FR-635: PickList Down Enter selects first host and saves", TestFr635PickListSelectsAndSaves),
+    ("FR-635: redirected numeric pick; Esc cancels", TestFr635RedirectedAndEsc),
+    ("FR-635: Program wires /airc to AircSlashCommand", TestFr635ProgramWiresSlash),
 };
 int failures = 0;
 foreach (var (name, run) in checks)
@@ -229,6 +244,24 @@ static void TestReadmeWcfOnly()
     Assert(readme.Contains("removed", StringComparison.OrdinalIgnoreCase)
         || readme.Contains("ignored", StringComparison.OrdinalIgnoreCase),
         "README should mention legacy airc ignore / removed flags");
+}
+
+static void TestFr620ReadmeInteractiveUx()
+{
+    string launcherDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher"));
+    string readmePath = Path.Combine(launcherDir, "README.md");
+    if (!File.Exists(readmePath))
+        readmePath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "launcher", "README.md"));
+    Assert(File.Exists(readmePath), "launcher/README.md not found");
+    string readme = File.ReadAllText(readmePath);
+    Assert(readme.Contains("## Interactive console UX", StringComparison.Ordinal), "README needs an interactive UX section");
+    Assert(readme.Contains("Up/Down/Enter", StringComparison.Ordinal), "README must name Up/Down/Enter");
+    Assert(readme.Contains("`|` `/` `-` `\\`", StringComparison.Ordinal), "README must name the wait glyphs");
+    Assert(readme.Contains("Non-interactive flags are unchanged", StringComparison.Ordinal)
+        && readme.Contains("--customer", StringComparison.Ordinal)
+        && readme.Contains("--no-fuel-check", StringComparison.Ordinal),
+        "README must say non-interactive flags stay");
+    Assert(readme.Contains("--mcp-catalog", StringComparison.Ordinal), "README must keep MCP stdout out of the spinner");
 }
 
 static void TestAgentRulesWcfPlaceholder()
@@ -929,6 +962,159 @@ static void TestFr613WaitQuietNoWrites()
     finally { ConsoleWait.Quiet = prev; }
 }
 
+static void TestFr619HoursFetchTtyDone()
+{
+    bool prev = ConsoleWait.Quiet;
+    try
+    {
+        ConsoleWait.Quiet = false;
+        var tty = new ScriptedWaitIO(redirected: false);
+        var result = HoursListFetch.Run(() =>
+        {
+            Thread.Sleep(80);
+            return new HoursFetchResult(true, "{\"ok\":true}", "");
+        }, tty);
+        Assert(result.Ok && result.Json == "{\"ok\":true}", "success payload");
+        string joined = string.Concat(tty.Writes);
+        Assert(ConsoleWait.Glyphs.Any(g => joined.Contains(g)), "TTY hours fetch must show a spinner glyph");
+        Assert(joined.Contains("hours fetch done", StringComparison.Ordinal), "success settles done");
+    }
+    finally { ConsoleWait.Quiet = prev; }
+}
+
+static void TestFr619HoursFetchFailNoDone()
+{
+    bool prev = ConsoleWait.Quiet;
+    try
+    {
+        ConsoleWait.Quiet = false;
+        var tty = new ScriptedWaitIO(redirected: false);
+        const string detail = "hours GET HTTP 503; delivery unverified; no retry";
+        var result = HoursListFetch.Run(() => new HoursFetchResult(false, "", detail), tty);
+        Assert(!result.Ok && result.Detail == detail && result.Json.Length == 0, "failure detail preserved");
+        string joined = string.Concat(tty.Writes);
+        Assert(!joined.Contains("done", StringComparison.Ordinal), "failed hours fetch must not print done");
+        var redirected = new ScriptedWaitIO(redirected: true);
+        result = HoursListFetch.Run(() => new HoursFetchResult(false, "x", detail), redirected);
+        Assert(!result.Ok && result.Detail == detail, "redirected failure detail");
+        Assert(redirected.Writes.Count == 0, "redirected hours fetch must not write");
+    }
+    finally { ConsoleWait.Quiet = prev; }
+}
+
+static void TestFr619HoursFetchWired()
+{
+    string[] candidates =
+    {
+        Path.GetFullPath(Path.Combine("..", "launcher", "Program.cs")),
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher", "Program.cs")),
+        Path.GetFullPath("launcher/Program.cs"),
+    };
+    string? path = candidates.FirstOrDefault(File.Exists);
+    Assert(path is not null, "launcher/Program.cs not found for hours fetch pin");
+    string src = File.ReadAllText(path!);
+    Assert(src.Contains("HoursListFetch.Run", StringComparison.Ordinal), "hours GET must use HoursListFetch");
+    Assert(src.Contains("case \"--check-hours\"", StringComparison.Ordinal), "--check-hours stays");
+    Assert(src.Contains("HOURS OVERRIDE: session", StringComparison.Ordinal), "SKIP override log stays");
+    Assert(src.Contains("Relaunching the agent to report hours", StringComparison.Ordinal), "relaunch prompt stays");
+}
+
+static string ReadLauncherProgram()
+{
+    string[] candidates =
+    {
+        Path.GetFullPath(Path.Combine("..", "launcher", "Program.cs")),
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher", "Program.cs")),
+        Path.GetFullPath("launcher/Program.cs"),
+    };
+    string? path = candidates.FirstOrDefault(File.Exists);
+    Assert(path is not null, "launcher/Program.cs not found");
+    return File.ReadAllText(path!);
+}
+
+static void TestFr618McpRegisterDoctorWired()
+{
+    string src = ReadLauncherProgram();
+    int method = src.IndexOf("static void EnsureGrokMcp(", StringComparison.Ordinal);
+    Assert(method >= 0, "EnsureGrokMcp missing");
+    int next = src.IndexOf("static string? FindNode(", StringComparison.Ordinal);
+    Assert(next > method, "FindNode missing after EnsureGrokMcp");
+    string window = src[method..next];
+    int listWait = window.IndexOf("WithWait(\"mcp register\"", StringComparison.Ordinal);
+    int listCapture = window.IndexOf("\"mcp\", \"list\"", StringComparison.Ordinal);
+    int addWait = window.LastIndexOf("WithWait(\"mcp register\"", StringComparison.Ordinal);
+    int addCall = window.IndexOf("\"mcp\", \"add\"", StringComparison.Ordinal);
+    int doctorWait = window.IndexOf("WithWait(\"mcp doctor\"", StringComparison.Ordinal);
+    int doctorCapture = window.IndexOf("\"mcp\", \"doctor\"", StringComparison.Ordinal);
+    Assert(listWait >= 0 && listCapture > listWait, "mcp list must run inside WithWait");
+    Assert(addWait >= 0 && addCall > addWait, "mcp add must run inside WithWait");
+    Assert(doctorWait >= 0 && doctorCapture > doctorWait, "mcp doctor must run inside WithWait");
+    Assert(window.Contains("grok mcp doctor {McpName}:", StringComparison.Ordinal), "doctor failure/success text unchanged");
+    Assert(window.Contains("handshake failed", StringComparison.Ordinal), "doctor failure check stays");
+    Assert(src.Contains("ConsoleWait.Quiet = true", StringComparison.Ordinal), "--mcp-catalog still sets Quiet");
+}
+
+static void TestFr618SkillsInspectWired()
+{
+    string src = ReadLauncherProgram();
+    int method = src.IndexOf("static void GrokInspect(", StringComparison.Ordinal);
+    Assert(method >= 0, "GrokInspect missing");
+    string window = src.Substring(method, Math.Min(700, src.Length - method));
+    int wait = window.IndexOf("WithWait(\"skills\"", StringComparison.Ordinal);
+    int capture = window.IndexOf("\"inspect\"", StringComparison.Ordinal);
+    Assert(wait >= 0 && capture > wait, "grok inspect must run inside WithWait");
+    Assert(window.Contains("grok inspect sees priority-* skills", StringComparison.Ordinal), "skills inspect message stays");
+}
+
+static void TestFr616FuelReportTtyDone()
+{
+    bool prev = ConsoleWait.Quiet;
+    try
+    {
+        ConsoleWait.Quiet = false;
+        var tty = new ScriptedWaitIO(redirected: false);
+        var result = FuelReportFetch.Run(() =>
+        {
+            Thread.Sleep(80);
+            return new FuelFetchResult(true, "{\"machines\":{}}", "");
+        }, tty);
+        Assert(result.Ok && result.Json.Contains("machines", StringComparison.Ordinal), "success payload");
+        string joined = string.Concat(tty.Writes);
+        Assert(ConsoleWait.Glyphs.Any(g => joined.Contains(g)), "TTY fuel report must show a spinner glyph");
+        Assert(joined.Contains("fuel report done", StringComparison.Ordinal), "success settles done");
+    }
+    finally { ConsoleWait.Quiet = prev; }
+}
+
+static void TestFr616FuelReportFailNoDone()
+{
+    bool prev = ConsoleWait.Quiet;
+    try
+    {
+        ConsoleWait.Quiet = false;
+        var tty = new ScriptedWaitIO(redirected: false);
+        const string detail = "A task was canceled.";
+        var result = FuelReportFetch.Run(() => new FuelFetchResult(false, "", detail), tty);
+        Assert(!result.Ok && result.Detail == detail && result.Json.Length == 0, "failure detail preserved");
+        string joined = string.Concat(tty.Writes);
+        Assert(!joined.Contains("done", StringComparison.Ordinal), "failed fuel report must not print done");
+        var redirected = new ScriptedWaitIO(redirected: true);
+        result = FuelReportFetch.Run(() => new FuelFetchResult(false, "x", detail), redirected);
+        Assert(!result.Ok && result.Detail == detail, "redirected failure detail");
+        Assert(redirected.Writes.Count == 0, "redirected fuel report must not write");
+    }
+    finally { ConsoleWait.Quiet = prev; }
+}
+
+static void TestFr616FuelReportWired()
+{
+    string src = ReadLauncherProgram();
+    Assert(src.Contains("FuelReportFetch.Run", StringComparison.Ordinal), "fuel GET must use FuelReportFetch");
+    Assert(src.Contains("case \"--no-fuel-check\"", StringComparison.Ordinal), "--no-fuel-check stays");
+    Assert(src.Contains("Continue anyway?", StringComparison.Ordinal), "Continue anyway prompt stays");
+    Assert(src.Contains("if (!NoFuel) FuelCheck()", StringComparison.Ordinal), "--no-fuel-check skips FuelCheck");
+}
+
 static void TestFr613McpCatalogSetsQuiet()
 {
     string[] candidates =
@@ -1066,7 +1252,108 @@ static void TestFr610CustomerRedirectedFirst()
     Assert(customerIndex == 0 && names[customerIndex] == "rees" && !haitchNew, $"expected rees from redirected 2, index={customerIndex}");
 }
 
-static string ReadLauncherProgramSrc()
+static string Fr635FixtureSeveralHosts() => """
+{"airc_console_details":[
+  {"nick":"host-a_console","channel":"#shop-a","machine":"host-a","domain":"DEV","workgroup":"WG1"},
+  {"nick":"host-b_console","channel":"#shop-b","machine":"host-b"}
+]}
+""";
+
+static void TestFr635ParseSeveralHosts()
+{
+    var result = AircHostFetch.ParseDigestJson(Fr635FixtureSeveralHosts());
+    Assert(result.Ok && result.Hosts.Count == 2, "two hosts");
+    Assert(result.Hosts[0].Machine == "host-a" && result.Hosts[0].Channel == "#shop-a", "host-a row");
+    Assert(result.Hosts[0].DomainWorkgroup == "DEV\\WG1", "domain\\workgroup when reported");
+    Assert(result.Hosts[1].Machine == "host-b" && result.Hosts[1].DomainWorkgroup is null, "host-b without domain");
+    var items = AircHostPick.BuildItems(result.Hosts);
+    Assert(items[0].Contains("host-a", StringComparison.Ordinal) && items[0].Contains("#shop-a", StringComparison.Ordinal), "display row");
+    Assert(items[0].Contains("DEV\\WG1", StringComparison.Ordinal), "display includes domain");
+}
+
+static void TestFr635EmptyRosterMessage()
+{
+    var lines = new List<string>();
+    int code = AircSlashCommand.Run(
+        fetch: () => new AircHostFetchResult(true, Array.Empty<AircHost>(), ""),
+        waitIo: new ScriptedWaitIO(redirected: true),
+        writeLine: lines.Add);
+    Assert(code == 0, "empty roster exit 0");
+    Assert(lines.Any(l => l.Contains(AircSlashCommand.EmptyMessage, StringComparison.Ordinal)), "empty message");
+}
+
+static void TestFr635UnreachableRoster()
+{
+    var lines = new List<string>();
+    int code = AircSlashCommand.Run(
+        fetch: () => new AircHostFetchResult(false, Array.Empty<AircHost>(), "IRC roster unreachable (timeout). Retry with /airc when bob digest or IRC is back."),
+        waitIo: new ScriptedWaitIO(redirected: true),
+        writeLine: lines.Add);
+    Assert(code == 2, "unreachable exit 2");
+    Assert(lines.Any(l => l.Contains("Retry with /airc", StringComparison.Ordinal)), "retry hint");
+}
+
+static void TestFr635PickListSelectsAndSaves()
+{
+    var hosts = AircHostFetch.ParseDigestJson(Fr635FixtureSeveralHosts()).Hosts;
+    AircHost? saved = null;
+    var pick = new ScriptedPickIO(
+        redirected: false,
+        keys: new[]
+        {
+            new ConsoleKeyInfo('\0', ConsoleKey.DownArrow, false, false, false),
+            new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false),
+        });
+    int code = AircSlashCommand.Run(
+        fetch: () => new AircHostFetchResult(true, hosts, ""),
+        pickIo: pick,
+        waitIo: new ScriptedWaitIO(redirected: true),
+        save: h => saved = h,
+        writeLine: _ => { });
+    Assert(code == 0, "select exit 0");
+    Assert(saved is not null && saved.Value.Machine == "host-b", $"Down+Enter should pick host-b, got {saved?.Machine}");
+}
+
+static void TestFr635RedirectedAndEsc()
+{
+    var hosts = AircHostFetch.ParseDigestJson(Fr635FixtureSeveralHosts()).Hosts;
+    AircHost? saved = null;
+    var redirected = new ScriptedPickIO(redirected: true, lines: new[] { "1" });
+    int code = AircSlashCommand.Run(
+        fetch: () => new AircHostFetchResult(true, hosts, ""),
+        pickIo: redirected,
+        waitIo: new ScriptedWaitIO(redirected: true),
+        save: h => saved = h,
+        writeLine: _ => { });
+    Assert(code == 0 && saved is not null && saved.Value.Machine == "host-a", "redirected 1 selects first host");
+
+    saved = null;
+    var lines = new List<string>();
+    var esc = new ScriptedPickIO(
+        redirected: false,
+        keys: new[] { new ConsoleKeyInfo('\0', ConsoleKey.Escape, false, false, false) });
+    code = AircSlashCommand.Run(
+        fetch: () => new AircHostFetchResult(true, hosts, ""),
+        pickIo: esc,
+        waitIo: new ScriptedWaitIO(redirected: true),
+        save: h => saved = h,
+        writeLine: lines.Add);
+    Assert(code == 0 && saved is null, "Esc cancels without save");
+    Assert(lines.Any(l => l.Contains(AircSlashCommand.CancelMessage, StringComparison.Ordinal)), "cancel message");
+}
+
+static void TestFr635ProgramWiresSlash()
+{
+    string? path = FindLauncherProgramPath();
+    Assert(path is not null, "Program.cs missing");
+    string src = File.ReadAllText(path!);
+    Assert(src.Contains("\"/airc\"", StringComparison.Ordinal) && src.Contains("AircSlashCommand.Run", StringComparison.Ordinal),
+        "/airc must call AircSlashCommand.Run");
+    Assert(src.Contains("ConsolePick.PickList", StringComparison.Ordinal) || File.ReadAllText(Path.Combine(Path.GetDirectoryName(path!)!, "AircSlashCommand.cs")).Contains("ConsolePick.PickList", StringComparison.Ordinal),
+        "PickList reused not copied");
+}
+
+static string? FindLauncherProgramPath()
 {
     string[] candidates =
     {
@@ -1074,7 +1361,12 @@ static string ReadLauncherProgramSrc()
         Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher", "Program.cs")),
         Path.GetFullPath("launcher/Program.cs"),
     };
-    string? path = candidates.FirstOrDefault(File.Exists);
+    return candidates.FirstOrDefault(File.Exists);
+}
+
+static string ReadLauncherProgramSrc()
+{
+    string? path = FindLauncherProgramPath();
     Assert(path is not null, "launcher/Program.cs not found");
     return File.ReadAllText(path!);
 }
