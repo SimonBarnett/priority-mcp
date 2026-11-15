@@ -108,7 +108,7 @@ try {
 
   const init = JSON.parse((await rpc('initialize', { protocolVersion: '2024-11-05', capabilities: {} })).text);
   assert(init.result.protocolVersion === '2024-11-05', 'protocol', init);
-  assert(init.result.serverInfo.name === 'mcp-priority', 'server name', init.result.serverInfo);
+  assert(init.result.serverInfo.name === 'Priority MCP', 'server name', init.result.serverInfo);
   assert(!JSON.stringify(init.result.capabilities).includes('prepare_form'), 'no execute capability', init);
 
   const tools = JSON.parse((await rpc('tools/list')).text);

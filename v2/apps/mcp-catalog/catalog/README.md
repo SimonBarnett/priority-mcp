@@ -1,4 +1,4 @@
-# Adding a skill to mcp-priority
+# Adding a skill to Priority MCP
 
 Drop a folder here. The Amplify MCP lists every directory that contains `meta.json`. No catalog code change required.
 

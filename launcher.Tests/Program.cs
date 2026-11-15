@@ -79,6 +79,12 @@ var checks = new List<(string Name, Action Run)>
     ("FR-610: customer PickList Down Enter selects first customer", TestFr610CustomerPickListFirstCustomer),
     ("FR-610: customer resolve General / customer / New / cancel", TestFr610CustomerResolveRows),
     ("FR-610: redirected customer pick 2 selects first customer", TestFr610CustomerRedirectedFirst),
+    ("FR-635: digest fixture maps several hosts including domain", TestFr635ParseSeveralHosts),
+    ("FR-635: empty roster message without PickList", TestFr635EmptyRosterMessage),
+    ("FR-635: unreachable roster errors with retry hint", TestFr635UnreachableRoster),
+    ("FR-635: PickList Down Enter selects first host and saves", TestFr635PickListSelectsAndSaves),
+    ("FR-635: redirected numeric pick; Esc cancels", TestFr635RedirectedAndEsc),
+    ("FR-635: Program wires /airc to AircSlashCommand", TestFr635ProgramWiresSlash),
 };
 
 int failures = 0;
@@ -1299,6 +1305,113 @@ static void TestFr610CustomerRedirectedFirst()
     int? picked = ConsolePick.PickList(items, "Pick customer:", io);
     Assert(CustomerPick.TryResolve(names, picked, out int customerIndex, out bool haitchNew), "resolve");
     Assert(customerIndex == 0 && names[customerIndex] == "rees" && !haitchNew, $"expected rees from redirected 2, index={customerIndex}");
+}
+
+static string Fr635FixtureSeveralHosts() => """
+{"airc_console_details":[
+  {"nick":"host-a_console","channel":"#shop-a","machine":"host-a","domain":"DEV","workgroup":"WG1"},
+  {"nick":"host-b_console","channel":"#shop-b","machine":"host-b"}
+]}
+""";
+
+static void TestFr635ParseSeveralHosts()
+{
+    var result = AircHostFetch.ParseDigestJson(Fr635FixtureSeveralHosts());
+    Assert(result.Ok && result.Hosts.Count == 2, "two hosts");
+    Assert(result.Hosts[0].Machine == "host-a" && result.Hosts[0].Channel == "#shop-a", "host-a row");
+    Assert(result.Hosts[0].DomainWorkgroup == "DEV\\WG1", "domain\\workgroup when reported");
+    Assert(result.Hosts[1].Machine == "host-b" && result.Hosts[1].DomainWorkgroup is null, "host-b without domain");
+    var items = AircHostPick.BuildItems(result.Hosts);
+    Assert(items[0].Contains("host-a", StringComparison.Ordinal) && items[0].Contains("#shop-a", StringComparison.Ordinal), "display row");
+    Assert(items[0].Contains("DEV\\WG1", StringComparison.Ordinal), "display includes domain");
+}
+
+static void TestFr635EmptyRosterMessage()
+{
+    var lines = new List<string>();
+    int code = AircSlashCommand.Run(
+        fetch: () => new AircHostFetchResult(true, Array.Empty<AircHost>(), ""),
+        waitIo: new ScriptedWaitIO(redirected: true),
+        writeLine: lines.Add);
+    Assert(code == 0, "empty roster exit 0");
+    Assert(lines.Any(l => l.Contains(AircSlashCommand.EmptyMessage, StringComparison.Ordinal)), "empty message");
+}
+
+static void TestFr635UnreachableRoster()
+{
+    var lines = new List<string>();
+    int code = AircSlashCommand.Run(
+        fetch: () => new AircHostFetchResult(false, Array.Empty<AircHost>(), "IRC roster unreachable (timeout). Retry with /airc when bob digest or IRC is back."),
+        waitIo: new ScriptedWaitIO(redirected: true),
+        writeLine: lines.Add);
+    Assert(code == 2, "unreachable exit 2");
+    Assert(lines.Any(l => l.Contains("Retry with /airc", StringComparison.Ordinal)), "retry hint");
+}
+
+static void TestFr635PickListSelectsAndSaves()
+{
+    var hosts = AircHostFetch.ParseDigestJson(Fr635FixtureSeveralHosts()).Hosts;
+    AircHost? saved = null;
+    var pick = new ScriptedPickIO(
+        redirected: false,
+        keys: new[]
+        {
+            new ConsoleKeyInfo('\0', ConsoleKey.DownArrow, false, false, false),
+            new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false),
+        });
+    int code = AircSlashCommand.Run(
+        fetch: () => new AircHostFetchResult(true, hosts, ""),
+        pickIo: pick,
+        waitIo: new ScriptedWaitIO(redirected: true),
+        save: h => saved = h,
+        writeLine: _ => { });
+    Assert(code == 0, "select exit 0");
+    Assert(saved is not null && saved.Value.Machine == "host-b", $"Down+Enter should pick host-b, got {saved?.Machine}");
+}
+
+static void TestFr635RedirectedAndEsc()
+{
+    var hosts = AircHostFetch.ParseDigestJson(Fr635FixtureSeveralHosts()).Hosts;
+    AircHost? saved = null;
+    var redirected = new ScriptedPickIO(redirected: true, lines: new[] { "1" });
+    int code = AircSlashCommand.Run(
+        fetch: () => new AircHostFetchResult(true, hosts, ""),
+        pickIo: redirected,
+        waitIo: new ScriptedWaitIO(redirected: true),
+        save: h => saved = h,
+        writeLine: _ => { });
+    Assert(code == 0 && saved is not null && saved.Value.Machine == "host-a", "redirected 1 selects first host");
+
+    saved = null;
+    var lines = new List<string>();
+    var esc = new ScriptedPickIO(
+        redirected: false,
+        keys: new[] { new ConsoleKeyInfo('\0', ConsoleKey.Escape, false, false, false) });
+    code = AircSlashCommand.Run(
+        fetch: () => new AircHostFetchResult(true, hosts, ""),
+        pickIo: esc,
+        waitIo: new ScriptedWaitIO(redirected: true),
+        save: h => saved = h,
+        writeLine: lines.Add);
+    Assert(code == 0 && saved is null, "Esc cancels without save");
+    Assert(lines.Any(l => l.Contains(AircSlashCommand.CancelMessage, StringComparison.Ordinal)), "cancel message");
+}
+
+static void TestFr635ProgramWiresSlash()
+{
+    string[] candidates =
+    {
+        Path.GetFullPath(Path.Combine("..", "launcher", "Program.cs")),
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher", "Program.cs")),
+        Path.GetFullPath("launcher/Program.cs"),
+    };
+    string? path = candidates.FirstOrDefault(File.Exists);
+    Assert(path is not null, "Program.cs missing");
+    string src = File.ReadAllText(path!);
+    Assert(src.Contains("\"/airc\"", StringComparison.Ordinal) && src.Contains("AircSlashCommand.Run", StringComparison.Ordinal),
+        "/airc must call AircSlashCommand.Run");
+    Assert(src.Contains("ConsolePick.PickList", StringComparison.Ordinal) || File.ReadAllText(Path.Combine(Path.GetDirectoryName(path!)!, "AircSlashCommand.cs")).Contains("ConsolePick.PickList", StringComparison.Ordinal),
+        "PickList reused not copied");
 }
 
 static string NewTemp()

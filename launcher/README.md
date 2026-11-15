@@ -5,13 +5,17 @@ with the right context.
 
 ## Interactive console UX
 
-**PickList (Up/Down/Enter).** On a TTY, `ConsolePick.PickList` highlights a row. Up and Down move the highlight. Enter selects it. Esc cancels (returns null). The customer menu rows are General, then customer names, then New (New still Ask Haitch). The project / service-call menu uses the same picker. The CLI menu remains a later FR.
+**PickList (Up/Down/Enter).** On a TTY, `ConsolePick.PickList` highlights a row. Up and Down move the highlight. Enter selects it. Esc cancels (returns null). The customer menu rows are General, then customer names, then New (New still Ask Haitch). The project / service-call menu uses the same picker. The CLI menu remains a later FR. `/airc` (FR #635) uses the same PickList for connected airc hosts.
 
 Non-interactive flags are unchanged: `--customer`, `--general`, and `--project` skip the picker. With stdin redirected, a numeric line still picks (1 = General, 2 = first customer). Do not print the picker on `--mcp-catalog` JSON-RPC stdout.
 
 **Wait spinner (`|` `/` `-` `\`).** `ConsoleWait.WithWait` cycles those glyphs on one TTY line while work runs, then settles to "done". A failed hours-list GET or fuel-report GET does not print "done". Output stays quiet when stdin/stdout is redirected, or when `--mcp-catalog` sets `ConsoleWait.Quiet` before serve.
 
-Call sites today: hours list GET (`hours fetch`), Bob fuel report GET (`fuel report`), MCP setup (`grok mcp list` / `add` / `doctor`), and skills registration (`grok inspect`). `--no-fuel-check` still skips fuel entirely. Continue-anyway stays after the spinner. `--check-hours`, relaunch, and SKIP logging are unchanged. Clone, fetch, and gh waits are later FRs.
+Call sites today: hours list GET (`hours fetch`), Bob fuel report GET (`fuel report`), `/airc` host roster fetch (`airc hosts`), MCP setup (`grok mcp list` / `add` / `doctor`), and skills registration (`grok inspect`). `--no-fuel-check` still skips fuel entirely. Continue-anyway stays after the spinner. `--check-hours`, relaunch, and SKIP logging are unchanged. Clone, fetch, and gh waits are later FRs.
+
+### `/airc` (FR #635)
+
+`PriorityAgent.exe /airc` shows a wait spinner, then lists airc hosts currently connected on IRC (live roster via bob digest `airc_console_details`: host, shop channel, and domain/workgroup when present). Esc cancels. No hosts → a clear message. Roster unreachable → a clear error that says to retry with `/airc`. Choosing a host only records the choice under `%LOCALAPPDATA%\PriorityAgent\airc-selection.json` (session use is FR #636). Offline tests can set `PRIORITY_AGENT_AIRC_DIGEST_JSON`. Never logs IRC passwords.
 
 A per-machine **MSI** is an extra asset next to the existing `PriorityAgent.exe` pre-release (the loose
 exe stays). The MSI installs to `C:\Program Files\Priority Agent`. An interactive install offers

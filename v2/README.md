@@ -1,4 +1,4 @@
-# v2 — portable form prep (catalog MCP + local execute)
+# v2 — portable form prep (Priority MCP + local execute)
 
 The **built CE DEV1 pack** an agent is already using stays at repo-root `src\Prepare-NamedForm.ps1`. Do not change that path for the in-flight agent.
 
