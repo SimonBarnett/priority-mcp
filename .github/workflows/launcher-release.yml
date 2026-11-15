@@ -122,8 +122,10 @@ jobs:
           $existing = gh release view $tag --json isPrerelease 2>$null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $tag .\launcher\out\PriorityAgent.exe .\launcher\out\PriorityAgent.exe.sha256 --clobber
+            if ($LASTEXITCODE -ne 0) { throw "GitHub release upload failed" }
             # Promote older prerelease tags when re-publishing the same tag (FR #637).
-            gh release edit $tag --prerelease=false
+            gh release edit $tag --prerelease=false --latest
+            if ($LASTEXITCODE -ne 0) { throw "GitHub release promote failed" }
           } else {
             $ver = $tag -replace '^launcher-v',''
             gh release create $tag .\launcher\out\PriorityAgent.exe .\launcher\out\PriorityAgent.exe.sha256 `

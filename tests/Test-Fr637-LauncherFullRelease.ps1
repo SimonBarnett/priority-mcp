@@ -13,8 +13,11 @@ if ($text -notmatch 'PriorityAgent\.exe\.sha256') { throw 'workflow must publish
 if ($text -match '(?m)--prerelease(\s|$|`)') {
     throw 'launcher-release.yml still passes --prerelease on create; FR #637 requires a full release'
 }
-if ($text -notmatch '--prerelease=false') {
-    throw 'workflow should promote existing tags with --prerelease=false'
+if ($text -notmatch '--prerelease=false --latest') {
+    throw 'workflow should promote existing tags with --prerelease=false --latest'
+}
+if ($text -notmatch 'GitHub release upload failed') {
+    throw 'workflow must fail closed when gh release upload fails before promote'
 }
 
 if ($text -notmatch 'if \(\$release\.isPrerelease\)') {
