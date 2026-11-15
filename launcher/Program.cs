@@ -65,6 +65,10 @@ static class Program
 
     static int Run(string[] args)
     {
+        // FR #635: /airc slash command — live airc host PickList (selection only; use is FR #636).
+        if (args.Length > 0 && args[0].Equals("/airc", StringComparison.OrdinalIgnoreCase))
+            return AircSlashCommand.Run();
+
         // MCP stdio server mode: stdout carries JSON-RPC only - nothing else may print.
         int mi = Array.FindIndex(args, a => a.Equals("--mcp-catalog", StringComparison.OrdinalIgnoreCase));
         if (mi >= 0)
@@ -1176,6 +1180,7 @@ static class Program
 PriorityAgent.exe [options]
 
   (no options)          interactive: pick customer/project, then MSI-style CLI chooser
+  /airc                 PickList of airc hosts connected on IRC (records choice only; FR #635)
   --list                list customer repos (topic priority-customer); with --customer, also list its folders
   --general             general Priority context (no customer)
   --customer <repo>     pick customer non-interactively (e.g. rees)
