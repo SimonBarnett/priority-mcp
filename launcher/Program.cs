@@ -69,6 +69,8 @@ static class Program
         int mi = Array.FindIndex(args, a => a.Equals("--mcp-catalog", StringComparison.OrdinalIgnoreCase));
         if (mi >= 0)
         {
+            // FR #613 / S5: never print wait spinner on MCP JSON-RPC stdout.
+            ConsoleWait.Quiet = true;
             string? dir = mi + 1 < args.Length && !args[mi + 1].StartsWith("--") ? args[mi + 1] : null;
             return CatalogMcp.Serve(dir ?? Environment.GetEnvironmentVariable("PRIORITY_CATALOG_DIR") ?? FindCatalogDir());
         }

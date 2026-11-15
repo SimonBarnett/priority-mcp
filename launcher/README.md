@@ -7,6 +7,8 @@ with the right context.
 (Esc cancels → null; redirected stdin keeps numbered ReadLine). Not wired to customer/project/CLI
 menus yet (later FRs). Never use it on `--mcp-catalog` JSON-RPC stdout.
 
+**Console WaitSpinner (FR #613):** `ConsoleWait.WithWait` cycles `|/-\` on one TTY line while work runs (settles to "done"). Quiet when redirected or `--mcp-catalog` (`ConsoleWait.Quiet`). Call sites (clone/fetch/gh/fuel) are later FRs.
+
 A per-machine **MSI** is an extra asset next to the existing `PriorityAgent.exe` pre-release (the loose
 exe stays). The MSI installs to `C:\Program Files\Priority Agent`. An interactive install offers
 **Grok**, **Cursor**, **OpenCode**, or **Not now**. `msiexec /qn` completes without showing that prompt
