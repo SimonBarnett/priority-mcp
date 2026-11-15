@@ -19,6 +19,7 @@
     <Compile Include="../launcher/CliInstall.cs" Link="CliInstall.cs" />
     <Compile Include="../launcher/CliChooser.cs" Link="CliChooser.cs" />
     <Compile Include="../launcher/ConsolePick.cs" Link="ConsolePick.cs" />
+    <Compile Include="../launcher/ConsoleWait.cs" Link="ConsoleWait.cs" />
     <Compile Include="../launcher/ProjectFolderPick.cs" Link="ProjectFolderPick.cs" />
     <Compile Include="../launcher/SessionLoginMeta.cs" Link="SessionLoginMeta.cs" />
     <None Include="fixtures/**/*" CopyToOutputDirectory="PreserveNewest" />

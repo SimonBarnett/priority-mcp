@@ -55,6 +55,11 @@ var checks = new List<(string Name, Action Run)>
     ("FR-609: redirected stdin 1 selects index 0", TestFr609PickListRedirectedOne),
     ("FR-609: redirected stdin 2 selects index 1", TestFr609PickListRedirectedTwo),
     ("FR-609: Esc cancels with null", TestFr609PickListEscCancels),
+    ("FR-613: wait spinner preview has >=2 distinct glyphs", TestFr613WaitSpinnerGlyphs),
+    ("FR-613: redirected / Quiet WithWait writes nothing", TestFr613WaitQuietNoWrites),
+    ("FR-613: Program sets Quiet before --mcp-catalog serve", TestFr613McpCatalogSetsQuiet),
+    ("MRB-633 hostile: WithWait on throw clears line and does not print done", TestMrb633WaitThrowNoDone),
+    ("MRB-633 hostile: WithWait TTY emits glyphs then settle done", TestMrb633WaitTtyGlyphsAndSettle),
     ("FR-611: project PickList Down Enter selects first folder", TestFr611ProjectPickListFirstFolder),
     ("FR-611: project resolve customer-level / folder / New / cancel", TestFr611ProjectResolveRows),
     ("FR-611: redirected project pick 2 selects first folder", TestFr611ProjectRedirectedFirstFolder),
@@ -890,6 +895,93 @@ static void TestFr609PickListEscCancels()
         keys: new[] { new ConsoleKeyInfo('\0', ConsoleKey.Escape, false, false, false) });
     int? picked = ConsolePick.PickList(items, "Pick one:", io);
     Assert(picked is null, "Esc must cancel with null");
+}
+
+static void TestFr613WaitSpinnerGlyphs()
+{
+    var frames = ConsoleWait.PreviewFrames("fetch", 4);
+    Assert(frames.Count == 4, "expected 4 frames");
+    var glyphs = frames.Select(f => f[^1]).Distinct().ToList();
+    Assert(glyphs.Count >= 2, $"expected >=2 distinct glyphs, got {glyphs.Count}: {string.Join(',', glyphs)}");
+    Assert(glyphs.All(g => ConsoleWait.Glyphs.Contains(g)), "glyphs must be from |/-\\ set");
+}
+
+static void TestFr613WaitQuietNoWrites()
+{
+    bool prev = ConsoleWait.Quiet;
+    try
+    {
+        var redirected = new ScriptedWaitIO(redirected: true);
+        int n = ConsoleWait.WithWait("clone", () => 7, redirected, TimeSpan.FromMilliseconds(1));
+        Assert(n == 7, "action result");
+        Assert(redirected.Writes.Count == 0, "redirected must not write spinner");
+
+        ConsoleWait.Quiet = true;
+        var tty = new ScriptedWaitIO(redirected: false);
+        n = ConsoleWait.WithWait("clone", () => 9, tty, TimeSpan.FromMilliseconds(1));
+        Assert(n == 9, "quiet action result");
+        Assert(tty.Writes.Count == 0, "Quiet must not write spinner (MCP stdout)");
+    }
+    finally { ConsoleWait.Quiet = prev; }
+}
+
+static void TestFr613McpCatalogSetsQuiet()
+{
+    string[] candidates =
+    {
+        Path.GetFullPath(Path.Combine("..", "launcher", "Program.cs")),
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher", "Program.cs")),
+        Path.GetFullPath("launcher/Program.cs"),
+    };
+    string? path = candidates.FirstOrDefault(File.Exists);
+    Assert(path is not null, "launcher/Program.cs not found for Quiet pin");
+    string src = File.ReadAllText(path!);
+    Assert(src.Contains("ConsoleWait.Quiet = true", StringComparison.Ordinal), "mcp-catalog path must set ConsoleWait.Quiet");
+    Assert(src.Contains("--mcp-catalog", StringComparison.Ordinal), "expected --mcp-catalog branch");
+}
+
+static void TestMrb633WaitThrowNoDone()
+{
+    bool prev = ConsoleWait.Quiet;
+    try
+    {
+        ConsoleWait.Quiet = false;
+        var tty = new ScriptedWaitIO(redirected: false);
+        bool threw = false;
+        try
+        {
+            ConsoleWait.WithWait("clone", () => { throw new InvalidOperationException("boom"); }, tty, TimeSpan.FromMilliseconds(1));
+        }
+        catch (InvalidOperationException)
+        {
+            threw = true;
+        }
+        Assert(threw, "action exception must propagate");
+        string joined = string.Concat(tty.Writes);
+        Assert(!joined.Contains("done", StringComparison.Ordinal), "must not print done when action throws");
+    }
+    finally { ConsoleWait.Quiet = prev; }
+}
+
+static void TestMrb633WaitTtyGlyphsAndSettle()
+{
+    bool prev = ConsoleWait.Quiet;
+    try
+    {
+        ConsoleWait.Quiet = false;
+        var tty = new ScriptedWaitIO(redirected: false);
+        int n = ConsoleWait.WithWait("fetch", () =>
+        {
+            Thread.Sleep(50);
+            return 3;
+        }, tty, TimeSpan.FromMilliseconds(5));
+        Assert(n == 3, "action result");
+        string joined = string.Concat(tty.Writes);
+        Assert(joined.Contains("fetch done", StringComparison.Ordinal), "settle must print fetch done");
+        var glyphHits = ConsoleWait.Glyphs.Count(g => joined.Contains(g));
+        Assert(glyphHits >= 1, "TTY path must emit at least one spinner glyph");
+    }
+    finally { ConsoleWait.Quiet = prev; }
 }
 
 static void TestFr611ProjectPickListFirstFolder()
