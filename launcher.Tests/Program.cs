@@ -51,6 +51,10 @@ var checks = new List<(string Name, Action Run)>
     ("MRB-577 hostile: .grok\\bin\\agent.exe is rejected as Cursor", TestMrb577RejectGrokAgentAsCursor),
     ("MRB-577 hostile: which-prompt forbids token fuel (exact)", TestMrb577WhichForbidsFuelExact),
     ("MRB-577 hostile: hours relaunch exe is the chosen CLI", TestMrb577HoursRelaunchChosenExe),
+    ("FR-609: TTY Down Down Enter selects index 2", TestFr609PickListDownDownEnter),
+    ("FR-609: redirected stdin 1 selects index 0", TestFr609PickListRedirectedOne),
+    ("FR-609: redirected stdin 2 selects index 1", TestFr609PickListRedirectedTwo),
+    ("FR-609: Esc cancels with null", TestFr609PickListEscCancels),
 };
 
 int failures = 0;
@@ -839,6 +843,50 @@ static void TestMrb577HoursRelaunchChosenExe()
     Assert(CliChooser.HoursRelaunchExe(cursor) == cursor.Path, "cursor hours must relaunch cursor path");
     Assert(CliChooser.HoursRelaunchExe(grok) == grok.Path, "grok hours must relaunch grok path");
     Assert(CliChooser.HoursRelaunchExe(cursor) != grok.Path, "cursor hours must not hardcode grok.exe");
+}
+
+static void TestFr609PickListDownDownEnter()
+{
+    var items = new[] { "alpha", "bravo", "charlie", "delta" };
+    var io = new ScriptedPickIO(
+        redirected: false,
+        keys: new[]
+        {
+            new ConsoleKeyInfo('\0', ConsoleKey.DownArrow, false, false, false),
+            new ConsoleKeyInfo('\0', ConsoleKey.DownArrow, false, false, false),
+            new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false),
+        });
+    int? picked = ConsolePick.PickList(items, "Pick one:", io);
+    Assert(picked == 2, $"expected index 2, got {picked}");
+    Assert(io.Writes.Any(w => w.Contains(">  3. charlie", StringComparison.Ordinal)
+            || w.Contains("> 3. charlie", StringComparison.Ordinal)),
+        "highlight row for charlie should be written");
+}
+
+static void TestFr609PickListRedirectedOne()
+{
+    var items = new[] { "alpha", "bravo", "charlie" };
+    var io = new ScriptedPickIO(redirected: true, lines: new[] { "1" });
+    int? picked = ConsolePick.PickList(items, "Pick one:", io);
+    Assert(picked == 0, $"expected index 0 for input 1, got {picked}");
+}
+
+static void TestFr609PickListRedirectedTwo()
+{
+    var items = new[] { "alpha", "bravo", "charlie" };
+    var io = new ScriptedPickIO(redirected: true, lines: new[] { "2" });
+    int? picked = ConsolePick.PickList(items, "Pick one:", io);
+    Assert(picked == 1, $"expected index 1 for input 2, got {picked}");
+}
+
+static void TestFr609PickListEscCancels()
+{
+    var items = new[] { "alpha", "bravo" };
+    var io = new ScriptedPickIO(
+        redirected: false,
+        keys: new[] { new ConsoleKeyInfo('\0', ConsoleKey.Escape, false, false, false) });
+    int? picked = ConsolePick.PickList(items, "Pick one:", io);
+    Assert(picked is null, "Esc must cancel with null");
 }
 
 static string NewTemp()
