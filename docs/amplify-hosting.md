@@ -1,4 +1,4 @@
-# Amplify Hosting for https://mcp.ntsa.uk
+﻿# Amplify Hosting for https://mcp.ntsa.uk
 
 The only component Amplify can host from this repository is the skill **catalog**
 at `v2/apps/mcp-catalog`. It is a Next.js 14 App Router server (lockfile
@@ -51,7 +51,7 @@ read it.
 | preBuild | `npm ci --include=dev --no-audit --fund=false` |
 | build | `npm run build` |
 
-`npm run build` is `node scripts/sync-skill-dag.mjs` (copy `docs/skill-sources/medatech-network/_dag` into `data/`), `next build`, `check-catalog-trace.mjs` (catalog + `data/dag.json` traced), and `check-dag.mjs` (catalog↔DAG sync + public-safe scan).
+`npm run build` is `node scripts/sync-skill-dag.mjs` (copy `docs/skill-sources/medatech-network/_dag` into `data/`), `next build`, `check-catalog-trace.mjs` (catalog + `data/dag.json` traced), and `check-dag.mjs` (catalogâ†”DAG sync + public-safe scan).
 The check fails the build if `catalog/` was not traced into the server bundle,
 if the build is a static export, or if `output: 'standalone'` reappears.
 The spec then deletes `.next/cache`. That cache is not used at runtime.
@@ -106,8 +106,8 @@ catalog code does not read them.
 
 In the Amplify console, after a `main` deploy has succeeded:
 
-1. Domain management → Add domain → `ntsa.uk`.
-2. Subdomain `mcp` → branch `main`. Do not attach the apex `ntsa.uk` in this step.
+1. Domain management â†’ Add domain â†’ `ntsa.uk`.
+2. Subdomain `mcp` â†’ branch `main`. Do not attach the apex `ntsa.uk` in this step.
 3. Use the certificate Amplify requests in AWS Certificate Manager. That
    certificate is created in us-east-1 because CloudFront requires it. Amplify
    does this; do not import a private key into the repo.
@@ -207,7 +207,7 @@ again at `https://mcp.ntsa.uk` after the certificate is issued.
 Public `resolve_skills` on mcp.ntsa.uk stays generic-only. Customer lessons and skills stay in the
 customer repo (`.grok/skills/` at repo root; SO/SC markdown under `SCxxxxxx` / `SOxxxxxx`) and are
 merged **on the seat** via `tools/priority-skill-dag/resolve-with-overlay.mjs` (or
-`Resolve-WithOverlay.ps1`). Only `{ task, maxLessons?, maxSkills?, maxBytes? }` is POSTed to MCP —
+`Resolve-WithOverlay.ps1`). Only `{ task, maxLessons?, maxSkills?, maxBytes? }` is POSTed to MCP â€”
 never overlay paths or bodies. Unit gate: `v2/apps/mcp-catalog/lib/customer-overlay.test.mjs`.
 
 7. `get_dag_node` with a known skill id succeeds; unknown id returns an error result.
@@ -250,3 +250,10 @@ That build's `.next` directory was 30 MB, of which 29 MB was `.next/cache`
 732 KB. The traced `catalog/` files are about 480 KB and stay in the build
 workspace so Amplify's compute bundler can copy them. Do not delete `catalog/`
 in the build spec.
+
+## Public chrome (FR #606)
+
+The Amplify landing page (`v2/apps/mcp-catalog/app/page.tsx` + `globals.css`) uses the shared
+bob.ntsa.uk visual tokens (charcoal / warm paper / butler gold) and links to
+`https://bob.ntsa.uk` and `https://github.com/SimonBarnett/priority-mcp`.
+Deploy remains Hosting compute / `WEB_COMPUTE` via root `amplify.yml`; no console change required for CSS.
