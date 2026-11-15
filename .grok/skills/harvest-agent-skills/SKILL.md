@@ -214,3 +214,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - WinPS 5.1 Join-Path takes only 2 args: nest Join-Path when syncing .grok skills to mcp-catalog mirrors, or catalog mirrors stay stale and mirror pin gates FAIL
 - catalog home training explainer section: place What the agent has been trained on above Skills; Medatech playbooks; allowlisted local execute; host never compiles forms or sees SQL; pin via training-explainer.mjs node:test
 - mcp.ntsa.uk Priority Agent download: resolve GitHub releases newest-first including prereleases for exact asset PriorityAgent.exe; UI label Priority Agent never launcher; show version+sha256; pin with node:test
+- Priority Agent console UX pack: child FR-B/C/D (#610-612) GIVEUP while foundation PickList FR-A #609 PR is open; comment blocked + re-offer after merge; do not stack implement PRs on open foundation
