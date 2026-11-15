@@ -11,7 +11,7 @@ Non-interactive flags are unchanged: `--customer`, `--general`, and `--project` 
 
 **Wait spinner (`|` `/` `-` `\`).** `ConsoleWait.WithWait` cycles those glyphs on one TTY line while work runs, then settles to "done". A failed hours-list GET or fuel-report GET does not print "done". Output stays quiet when stdin/stdout is redirected, or when `--mcp-catalog` sets `ConsoleWait.Quiet` before serve.
 
-Call sites today: hours list GET (`hours fetch`) and Bob fuel report GET (`fuel report`). `--no-fuel-check` still skips fuel entirely. Continue-anyway stays after the spinner. `--check-hours`, relaunch, and SKIP logging are unchanged. Clone, fetch, and gh waits are later FRs.
+Call sites today: hours list GET (`hours fetch`), Bob fuel report GET (`fuel report`), MCP setup (`grok mcp list` / `add` / `doctor`), and skills registration (`grok inspect`). `--no-fuel-check` still skips fuel entirely. Continue-anyway stays after the spinner. `--check-hours`, relaunch, and SKIP logging are unchanged. Clone, fetch, and gh waits are later FRs.
 
 A per-machine **MSI** is an extra asset next to the existing `PriorityAgent.exe` pre-release (the loose
 exe stays). The MSI installs to `C:\Program Files\Priority Agent`. An interactive install offers
