@@ -1,6 +1,11 @@
 import { headers } from 'next/headers';
 import { listSkills } from '../lib/catalog';
 import { catalogPublicOrigin } from '../lib/public-origin';
+import {
+  TRAINING_EXPLAINER_BODY,
+  TRAINING_EXPLAINER_POINTS,
+  TRAINING_EXPLAINER_TITLE,
+} from '../lib/training-explainer';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,6 +32,15 @@ export default function Home() {
         Cursor / Claude: HTTP MCP URL <code>{origin}/mcp</code> (one JSON-RPC object per POST,
         protocol 2024-11-05). This deployment does not serve stdio or a long-lived event stream.
       </p>
+      <section aria-labelledby="training-explainer-heading">
+        <h2 id="training-explainer-heading">{TRAINING_EXPLAINER_TITLE}</h2>
+        <p>{TRAINING_EXPLAINER_BODY}</p>
+        <ul>
+          {TRAINING_EXPLAINER_POINTS.map((point) => (
+            <li key={point}>{point}</li>
+          ))}
+        </ul>
+      </section>
       <h2>Skills</h2>
       <p>
         Add another skill later by dropping <code>catalog/&lt;name&gt;/meta.json</code> and{' '}
