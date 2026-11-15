@@ -838,16 +838,28 @@ static class Program
         // REST listing filtered on topics: no search-index lag (gh repo list --topic uses search).
         // FR #615 / S3: spinner while gh api lists priority-customer repos (Quiet/redirected = no writes).
         string jq = ".[] | select((.topics // []) | index(\"" + Topic + "\")) | [.name, .full_name, .default_branch, (.description // \"\")] | @tsv";
-        return ConsoleWait.WithWait("customers", () =>
+        // FR #642: failed gh api must throw inside WithWait so the spinner does not settle to "customers done".
+        try
         {
-            var (rc, outp, err) = Capture(Gh, null, "api", "--paginate", "user/repos?affiliation=owner&per_page=100", "--jq", jq);
-            if (rc != 0) { Err("gh api failed: " + err.Trim()); return new(); }
-            return outp.Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                .Select(l => l.TrimEnd('\r').Split('\t'))
-                .Where(f => f.Length >= 3)
-                .Select(f => new Customer(f[0], f[1], f[2], f.Length > 3 ? f[3] : ""))
-                .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
-        });
+            return ConsoleWait.WithWait("customers", () =>
+            {
+                var (rc, outp, err) = Capture(Gh, null, "api", "--paginate", "user/repos?affiliation=owner&per_page=100", "--jq", jq);
+                if (rc != 0)
+                {
+                    Err("gh api failed: " + err.Trim());
+                    throw new InvalidOperationException("gh api failed");
+                }
+                return outp.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(l => l.TrimEnd('\r').Split('\t'))
+                    .Where(f => f.Length >= 3)
+                    .Select(f => new Customer(f[0], f[1], f[2], f.Length > 3 ? f[3] : ""))
+                    .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            });
+        }
+        catch (InvalidOperationException)
+        {
+            return new();
+        }
     }
 
     // ------------------------------------------------------------------ grok config
