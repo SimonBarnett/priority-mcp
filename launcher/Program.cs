@@ -862,7 +862,9 @@ static class Program
                                       : $"no node >= 18 found ({seen}); using PriorityAgent.exe --mcp-catalog for priority-catalog");
         }
         string want = string.Join(' ', cmd);
-        var (rc, outp, _) = Capture(grok, null, "mcp", "list");
+        // FR #618 / S3: spinner on the console UI while grok mcp list/add/doctor run.
+        // Quiet and redirected stdout (including --mcp-catalog) write nothing (S5).
+        var (rc, outp, _) = ConsoleWait.WithWait("mcp register", () => Capture(grok, null, "mcp", "list"));
         string line = outp.Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.StartsWith(McpName + ":", StringComparison.OrdinalIgnoreCase)) ?? "";
         string current = line == "" ? "" : line[(McpName.Length + 1)..].Trim();
         bool good = current.Equals(want, StringComparison.OrdinalIgnoreCase);
@@ -870,12 +872,16 @@ static class Program
         else if (DryRun) { Info($"would run: grok mcp add {McpName} -- {want}   (currently: {(current == "" ? "not registered" : current)})"); return; }
         else
         {
-            var a = new List<string> { "mcp", "add", McpName, "--" }; a.AddRange(cmd);
-            int arc = RunTo(grok, null, a.ToArray());
+            int arc = ConsoleWait.WithWait("mcp register", () =>
+            {
+                var a = new List<string> { "mcp", "add", McpName, "--" };
+                a.AddRange(cmd);
+                return RunTo(grok, null, a.ToArray());
+            });
             Check(arc == 0, $"registered MCP '{McpName}' (stdio) -> {want}{(current == "" ? "" : $" (replaced: {current})")}");
         }
         if (DryRun && !good) return;
-        var (drc, dout, derr) = Capture(grok, null, "mcp", "doctor", McpName);
+        var (drc, dout, derr) = ConsoleWait.WithWait("mcp doctor", () => Capture(grok, null, "mcp", "doctor", McpName));
         string d = (dout + derr).Trim();
         int sec = d.IndexOf(McpName + " (", StringComparison.OrdinalIgnoreCase);
         if (sec >= 0) d = d[sec..];
@@ -959,7 +965,8 @@ static class Program
 
     static void GrokInspect(string grok, string workDir)
     {
-        var (rc, outp, _) = Capture(grok, workDir, "inspect");
+        // FR #618: skills registration check is a grok process wait; spinner on the console only.
+        var (rc, outp, _) = ConsoleWait.WithWait("skills", () => Capture(grok, workDir, "inspect"));
         Check(rc == 0 && outp.Contains("priority-", StringComparison.OrdinalIgnoreCase), "grok inspect sees priority-* skills");
         Check(rc == 0 && outp.Contains(McpName, StringComparison.OrdinalIgnoreCase), $"grok inspect sees MCP '{McpName}'");
     }
