@@ -75,6 +75,8 @@ var checks = new List<(string Name, Action Run)>
     ("FR-610: customer PickList Down Enter selects first customer", TestFr610CustomerPickListFirstCustomer),
     ("FR-610: customer resolve General / customer / New / cancel", TestFr610CustomerResolveRows),
     ("FR-610: redirected customer pick 2 selects first customer", TestFr610CustomerRedirectedFirst),
+    ("FR-615: ListCustomers wraps gh api with ConsoleWait.WithWait", TestFr615ListCustomersUsesWithWait),
+    ("FR-615: ListCustomers failure path still Err + empty list", TestFr615ListCustomersFailurePathPin),
     ("FR-635: digest fixture maps several hosts including domain", TestFr635ParseSeveralHosts),
     ("FR-635: empty roster message without PickList", TestFr635EmptyRosterMessage),
     ("FR-635: unreachable roster errors with retry hint", TestFr635UnreachableRoster),
@@ -82,7 +84,6 @@ var checks = new List<(string Name, Action Run)>
     ("FR-635: redirected numeric pick; Esc cancels", TestFr635RedirectedAndEsc),
     ("FR-635: Program wires /airc to AircSlashCommand", TestFr635ProgramWiresSlash),
 };
-
 int failures = 0;
 foreach (var (name, run) in checks)
 {
@@ -1343,19 +1344,58 @@ static void TestFr635RedirectedAndEsc()
 
 static void TestFr635ProgramWiresSlash()
 {
-    string[] candidates =
-    {
-        Path.GetFullPath(Path.Combine("..", "launcher", "Program.cs")),
-        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher", "Program.cs")),
-        Path.GetFullPath("launcher/Program.cs"),
-    };
-    string? path = candidates.FirstOrDefault(File.Exists);
+    string? path = FindLauncherProgramPath();
     Assert(path is not null, "Program.cs missing");
     string src = File.ReadAllText(path!);
     Assert(src.Contains("\"/airc\"", StringComparison.Ordinal) && src.Contains("AircSlashCommand.Run", StringComparison.Ordinal),
         "/airc must call AircSlashCommand.Run");
     Assert(src.Contains("ConsolePick.PickList", StringComparison.Ordinal) || File.ReadAllText(Path.Combine(Path.GetDirectoryName(path!)!, "AircSlashCommand.cs")).Contains("ConsolePick.PickList", StringComparison.Ordinal),
         "PickList reused not copied");
+}
+
+static string? FindLauncherProgramPath()
+{
+    string[] candidates =
+    {
+        Path.GetFullPath(Path.Combine("..", "launcher", "Program.cs")),
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher", "Program.cs")),
+        Path.GetFullPath("launcher/Program.cs"),
+    };
+    return candidates.FirstOrDefault(File.Exists);
+}
+
+static string ReadLauncherProgramSrc()
+{
+    string? path = FindLauncherProgramPath();
+    Assert(path is not null, "launcher/Program.cs not found");
+    return File.ReadAllText(path!);
+}
+
+static void TestFr615ListCustomersUsesWithWait()
+{
+    string src = ReadLauncherProgramSrc();
+    int method = src.IndexOf("static List<Customer> ListCustomers()", StringComparison.Ordinal);
+    Assert(method >= 0, "ListCustomers method missing");
+    // Method body ends at next "static " at column of a type member — take a bounded window.
+    string window = src.Substring(method, Math.Min(900, src.Length - method));
+    int wait = window.IndexOf("ConsoleWait.WithWait", StringComparison.Ordinal);
+    int capture = window.IndexOf("Capture(Gh", StringComparison.Ordinal);
+    Assert(wait >= 0, "ListCustomers must wrap with ConsoleWait.WithWait (S3 spinner on gh api)");
+    Assert(capture > wait, "Capture(Gh api) must run inside WithWait");
+    Assert(window.Contains("customers", StringComparison.OrdinalIgnoreCase) || window.Contains("\"customer", StringComparison.OrdinalIgnoreCase),
+        "WithWait label should mention customers");
+}
+
+static void TestFr615ListCustomersFailurePathPin()
+{
+    string src = ReadLauncherProgramSrc();
+    int method = src.IndexOf("static List<Customer> ListCustomers()", StringComparison.Ordinal);
+    Assert(method >= 0, "ListCustomers method missing");
+    string window = src.Substring(method, Math.Min(900, src.Length - method));
+    Assert(window.Contains("gh api failed", StringComparison.Ordinal), "failure must Err with gh api failed");
+    Assert(window.Contains("return new()", StringComparison.Ordinal) || window.Contains("return new List", StringComparison.Ordinal),
+        "failure must return empty list");
+    Assert(src.Contains("var customers = ListCustomers()", StringComparison.Ordinal), "--list / interactive still call ListCustomers");
 }
 
 static string NewTemp()
