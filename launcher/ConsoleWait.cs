@@ -46,17 +46,30 @@ public static class ConsoleWait
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         TimeSpan delay = frameDelay ?? TimeSpan.FromMilliseconds(80);
         var spinner = Task.Run(() => RunSpinner(label, io, delay, cts.Token), CancellationToken.None);
+        Exception? fault = null;
+        T result = default!;
         try
         {
-            return action();
+            result = action();
+        }
+        catch (Exception ex)
+        {
+            fault = ex;
         }
         finally
         {
             cts.Cancel();
             try { spinner.Wait(TimeSpan.FromSeconds(2)); }
-            catch (AggregateException) { /* cancelled */ }
-            Settle(label, io);
+            catch (AggregateException) { /* cancelled / timed out */ }
+            // Never print "<label> done" when the action failed (call-site FRs inherit this).
+            if (fault is null)
+                Settle(label, io);
+            else
+                ClearLine(label, io);
         }
+        if (fault is not null)
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(fault).Throw();
+        return result;
     }
 
     public static void WithWait(string label, Action action, IConsoleWaitIO? io = null, TimeSpan? frameDelay = null, CancellationToken cancellationToken = default)
@@ -97,10 +110,15 @@ public static class ConsoleWait
         }
     }
 
-    static void Settle(string label, IConsoleWaitIO io)
+    static void ClearLine(string label, IConsoleWaitIO io)
     {
         string clear = "\r" + new string(' ', Math.Max(12, label.Length + 4)) + "\r";
         io.Write(clear);
+    }
+
+    static void Settle(string label, IConsoleWaitIO io)
+    {
+        ClearLine(label, io);
         io.WriteLine($"{label} done");
     }
 }

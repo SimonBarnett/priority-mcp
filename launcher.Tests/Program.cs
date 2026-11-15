@@ -58,6 +58,11 @@ var checks = new List<(string Name, Action Run)>
     ("FR-613: wait spinner preview has >=2 distinct glyphs", TestFr613WaitSpinnerGlyphs),
     ("FR-613: redirected / Quiet WithWait writes nothing", TestFr613WaitQuietNoWrites),
     ("FR-613: Program sets Quiet before --mcp-catalog serve", TestFr613McpCatalogSetsQuiet),
+    ("MRB-633 hostile: WithWait on throw clears line and does not print done", TestMrb633WaitThrowNoDone),
+    ("MRB-633 hostile: WithWait TTY emits glyphs then settle done", TestMrb633WaitTtyGlyphsAndSettle),
+    ("FR-611: project PickList Down Enter selects first folder", TestFr611ProjectPickListFirstFolder),
+    ("FR-611: project resolve customer-level / folder / New / cancel", TestFr611ProjectResolveRows),
+    ("FR-611: redirected project pick 2 selects first folder", TestFr611ProjectRedirectedFirstFolder),
 };
 
 int failures = 0;
@@ -933,6 +938,90 @@ static void TestFr613McpCatalogSetsQuiet()
     string src = File.ReadAllText(path!);
     Assert(src.Contains("ConsoleWait.Quiet = true", StringComparison.Ordinal), "mcp-catalog path must set ConsoleWait.Quiet");
     Assert(src.Contains("--mcp-catalog", StringComparison.Ordinal), "expected --mcp-catalog branch");
+}
+
+static void TestMrb633WaitThrowNoDone()
+{
+    bool prev = ConsoleWait.Quiet;
+    try
+    {
+        ConsoleWait.Quiet = false;
+        var tty = new ScriptedWaitIO(redirected: false);
+        bool threw = false;
+        try
+        {
+            ConsoleWait.WithWait("clone", () => { throw new InvalidOperationException("boom"); }, tty, TimeSpan.FromMilliseconds(1));
+        }
+        catch (InvalidOperationException)
+        {
+            threw = true;
+        }
+        Assert(threw, "action exception must propagate");
+        string joined = string.Concat(tty.Writes);
+        Assert(!joined.Contains("done", StringComparison.Ordinal), "must not print done when action throws");
+    }
+    finally { ConsoleWait.Quiet = prev; }
+}
+
+static void TestMrb633WaitTtyGlyphsAndSettle()
+{
+    bool prev = ConsoleWait.Quiet;
+    try
+    {
+        ConsoleWait.Quiet = false;
+        var tty = new ScriptedWaitIO(redirected: false);
+        int n = ConsoleWait.WithWait("fetch", () =>
+        {
+            Thread.Sleep(50);
+            return 3;
+        }, tty, TimeSpan.FromMilliseconds(5));
+        Assert(n == 3, "action result");
+        string joined = string.Concat(tty.Writes);
+        Assert(joined.Contains("fetch done", StringComparison.Ordinal), "settle must print fetch done");
+        var glyphHits = ConsoleWait.Glyphs.Count(g => joined.Contains(g));
+        Assert(glyphHits >= 1, "TTY path must emit at least one spinner glyph");
+    }
+    finally { ConsoleWait.Quiet = prev; }
+}
+
+static void TestFr611ProjectPickListFirstFolder()
+{
+    var folders = new[] { "SC100", "SC200" };
+    var items = ProjectFolderPick.BuildItems(folders);
+    // index 0 = customer level; Down once -> first folder; Enter
+    var io = new ScriptedPickIO(
+        redirected: false,
+        keys: new[]
+        {
+            new ConsoleKeyInfo('\0', ConsoleKey.DownArrow, false, false, false),
+            new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false),
+        });
+    int? picked = ConsolePick.PickList(items, "Pick project:", io);
+    Assert(ProjectFolderPick.TryResolve(folders, picked, out string? project, out bool haitchNew), "resolve must succeed");
+    Assert(!haitchNew && project == "SC100", $"expected SC100, got project={project} haitch={haitchNew}");
+}
+
+static void TestFr611ProjectResolveRows()
+{
+    var folders = new[] { "SC100", "SO9" };
+    Assert(ProjectFolderPick.BuildItems(folders).Count == 4, "customer-level + 2 folders + New");
+    Assert(ProjectFolderPick.TryResolve(folders, 0, out string? p0, out bool h0) && p0 is null && !h0, "0 = customer level");
+    Assert(ProjectFolderPick.TryResolve(folders, 1, out string? p1, out bool h1) && p1 == "SC100" && !h1, "1 = first folder");
+    Assert(ProjectFolderPick.TryResolve(folders, 2, out string? p2, out bool h2) && p2 == "SO9" && !h2, "2 = second folder");
+    Assert(ProjectFolderPick.TryResolve(folders, 3, out string? p3, out bool h3) && p3 is null && h3, "3 = New/Haitch");
+    Assert(!ProjectFolderPick.TryResolve(folders, null, out _, out _), "null index cancels");
+    Assert(!ProjectFolderPick.TryResolve(folders, 99, out _, out _), "out of range cancels");
+}
+
+static void TestFr611ProjectRedirectedFirstFolder()
+{
+    var folders = new[] { "SC100", "SC200" };
+    var items = ProjectFolderPick.BuildItems(folders);
+    // redirected 1-based: 1=customer level, 2=SC100
+    var io = new ScriptedPickIO(redirected: true, lines: new[] { "2" });
+    int? picked = ConsolePick.PickList(items, "Pick project:", io);
+    Assert(ProjectFolderPick.TryResolve(folders, picked, out string? project, out bool haitchNew), "resolve");
+    Assert(project == "SC100" && !haitchNew, $"expected SC100 from redirected 2, got {project}");
 }
 
 static string NewTemp()
