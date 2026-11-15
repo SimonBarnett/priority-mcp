@@ -213,3 +213,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - After GitHub repo rename, MRB assign may keep the old owner/repo id while Closes and intake use the new name; DONE/ACK keep the exact assign id; leftovers of the old leaf are OK only as documented launcher/folder/origin aliases gated by a rename test.
 - WinPS 5.1 Join-Path takes only 2 args: nest Join-Path when syncing .grok skills to mcp-catalog mirrors, or catalog mirrors stay stale and mirror pin gates FAIL
 - catalog home training explainer section: place What the agent has been trained on above Skills; Medatech playbooks; allowlisted local execute; host never compiles forms or sees SQL; pin via training-explainer.mjs node:test
+- mcp.ntsa.uk Priority Agent download: resolve GitHub releases newest-first including prereleases for exact asset PriorityAgent.exe; UI label Priority Agent never launcher; show version+sha256; pin with node:test
