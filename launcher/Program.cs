@@ -973,23 +973,42 @@ static class Program
 
     static void FuelCheck()
     {
+        // FR #616: spinner on the blocking fuel report GET. Continue-anyway prompt stays outside WithWait.
+        var fetched = FuelReportFetch.Run(FetchFuelReportOnce);
+        if (fetched.Ok)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(fetched.Json);
+                string m = Environment.MachineName.ToLowerInvariant();
+                if (doc.RootElement.TryGetProperty("machines", out var ms) && ms.TryGetProperty(m, out var me)
+                    && me.TryGetProperty("pcent", out var pc) && pc.TryGetProperty("grok-chat", out var g) && g.ValueKind == JsonValueKind.Number)
+                {
+                    double v = g.GetDouble();
+                    if (v > 0) { Check(true, $"fuel: grok-chat {v}% on {m} -> pool"); return; }
+                    Warn($"fuel: grok-chat is 0% on {m} (pool empty). Grok may need a session key; the launcher never handles keys.");
+                }
+                else Warn($"fuel: no grok-chat figure for {m} in the Bob report (unknown).");
+            }
+            catch (Exception ex) { Warn("fuel: Bob report unavailable (" + ex.Message + ")"); }
+        }
+        else Warn("fuel: Bob report unavailable (" + fetched.Detail + ")");
+        if (!DryRun && !Smoke && !Console.IsInputRedirected && !Ask("Continue anyway? [y/N]: ").StartsWith("y", StringComparison.OrdinalIgnoreCase))
+            throw new Exception("stopped: no grok fuel");
+    }
+
+    static FuelFetchResult FetchFuelReportOnce()
+    {
         try
         {
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
-            using var doc = JsonDocument.Parse(http.GetStringAsync(FuelUrl).GetAwaiter().GetResult());
-            string m = Environment.MachineName.ToLowerInvariant();
-            if (doc.RootElement.TryGetProperty("machines", out var ms) && ms.TryGetProperty(m, out var me)
-                && me.TryGetProperty("pcent", out var pc) && pc.TryGetProperty("grok-chat", out var g) && g.ValueKind == JsonValueKind.Number)
-            {
-                double v = g.GetDouble();
-                if (v > 0) { Check(true, $"fuel: grok-chat {v}% on {m} -> pool"); return; }
-                Warn($"fuel: grok-chat is 0% on {m} (pool empty). Grok may need a session key; the launcher never handles keys.");
-            }
-            else Warn($"fuel: no grok-chat figure for {m} in the Bob report (unknown).");
+            string body = http.GetStringAsync(FuelUrl).GetAwaiter().GetResult();
+            return new FuelFetchResult(true, body, "");
         }
-        catch (Exception ex) { Warn("fuel: Bob report unavailable (" + ex.Message + ")"); }
-        if (!DryRun && !Smoke && !Console.IsInputRedirected && !Ask("Continue anyway? [y/N]: ").StartsWith("y", StringComparison.OrdinalIgnoreCase))
-            throw new Exception("stopped: no grok fuel");
+        catch (Exception ex)
+        {
+            return new FuelFetchResult(false, "", ex.Message);
+        }
     }
 
     static int RulesVersion(string text)

@@ -13,7 +13,7 @@ Never use it on `--mcp-catalog` JSON-RPC stdout.
 `--customer rees` and `--general` skip the picker. With stdin redirected, a numeric line still picks
 (1 = General, 2 = first customer).
 
-**Console WaitSpinner (FR #613 / #619):** `ConsoleWait.WithWait` cycles `|/-\` on one TTY line while work runs (settles to "done"). Quiet when redirected or `--mcp-catalog` (`ConsoleWait.Quiet`). The hours list GET before the exit check uses it (`hours fetch`). A failed GET does not print "done". `--check-hours`, the relaunch prompt, and SKIP logging are unchanged. MCP setup uses it for `grok mcp list`, `grok mcp add`, and `grok mcp doctor`, and skills registration uses it for `grok inspect` (FR #618). Those waits stay off `--mcp-catalog` stdout (`ConsoleWait.Quiet`). Clone/fetch/gh/fuel waits are later FRs.
+**Console WaitSpinner (FR #613 / #616 / #618 / #619):** `ConsoleWait.WithWait` cycles `|/-\` on one TTY line while work runs (settles to "done"). Quiet when redirected or `--mcp-catalog` (`ConsoleWait.Quiet`). Hours list GET (`hours fetch`) and Bob fuel report GET (`fuel report`) use it; a failed GET does not print "done". `--no-fuel-check` still skips fuel entirely; Continue-anyway stays after the spinner. MCP setup uses it for `grok mcp list` / `add` / `doctor`, and skills registration for `grok inspect` (FR #618); those waits stay off `--mcp-catalog` stdout. `--check-hours`, relaunch, and SKIP are unchanged. Clone/fetch/gh waits are later FRs.
 
 A per-machine **MSI** is an extra asset next to the existing `PriorityAgent.exe` pre-release (the loose
 exe stays). The MSI installs to `C:\Program Files\Priority Agent`. An interactive install offers

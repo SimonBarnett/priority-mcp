@@ -1,0 +1,4 @@
+merge origin/main into fr-618 for MRB #644 (CONFLICTING)
+
+Keep FR-618 MCP/doctor/inspect WithWait pins alongside FR-616 FuelReportFetch.
+Combine README WaitSpinner call-site notes.
