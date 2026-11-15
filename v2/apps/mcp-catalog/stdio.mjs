@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = process.argv[2] || process.env.PRIORITY_CATALOG_DIR || path.join(here, 'catalog');
 const PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05'];
-const SERVER = { name: 'mcp-priority', version: '1.0.0-stdio' };
+const SERVER = { name: 'Priority MCP', version: '1.0.0-stdio' };
 const SKIP = new Set(['node_modules', '.git', '.next']);
 
 function listRunnerFiles(dir, rel = '') {
