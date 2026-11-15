@@ -21,6 +21,7 @@
     <Compile Include="../launcher/ConsolePick.cs" Link="ConsolePick.cs" />
     <Compile Include="../launcher/ConsoleWait.cs" Link="ConsoleWait.cs" />
     <Compile Include="../launcher/HoursListFetch.cs" Link="HoursListFetch.cs" />
+    <Compile Include="../launcher/FuelReportFetch.cs" Link="FuelReportFetch.cs" />
     <Compile Include="../launcher/ProjectFolderPick.cs" Link="ProjectFolderPick.cs" />
     <Compile Include="../launcher/CustomerPick.cs" Link="CustomerPick.cs" />
     <Compile Include="../launcher/SessionLoginMeta.cs" Link="SessionLoginMeta.cs" />
