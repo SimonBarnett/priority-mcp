@@ -8,7 +8,7 @@ with the right context.
 menu uses it (customer-level + folders + New as rows; `--project` unchanged; New still Ask Haitch).
 Customer / CLI menus remain later FRs. Never use it on `--mcp-catalog` JSON-RPC stdout.
 
-**Console WaitSpinner (FR #613):** `ConsoleWait.WithWait` cycles `|/-\` on one TTY line while work runs (settles to "done"). Quiet when redirected or `--mcp-catalog` (`ConsoleWait.Quiet`). Call sites (clone/fetch/gh/fuel) are later FRs.
+**Console WaitSpinner (FR #613 / #619):** `ConsoleWait.WithWait` cycles `|/-\` on one TTY line while work runs (settles to "done"). Quiet when redirected or `--mcp-catalog` (`ConsoleWait.Quiet`). The hours list GET before the exit check uses it (`hours fetch`). A failed GET does not print "done". `--check-hours`, the relaunch prompt, and SKIP logging are unchanged. Clone/fetch/gh/fuel waits are later FRs.
 
 A per-machine **MSI** is an extra asset next to the existing `PriorityAgent.exe` pre-release (the loose
 exe stays). The MSI installs to `C:\Program Files\Priority Agent`. An interactive install offers
