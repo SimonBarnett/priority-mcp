@@ -55,7 +55,7 @@ evidence.tools = disc.tools;
 const init = await rpc('initialize', { protocolVersion: '2024-11-05', capabilities: {} }, 1);
 evidence.serverInfo = init.result?.serverInfo || null;
 assert.equal(init.result?.protocolVersion, '2024-11-05');
-assert.equal(init.result?.serverInfo?.name, 'mcp-priority');
+assert.equal(init.result?.serverInfo?.name, 'Priority MCP');
 
 const resolveEnv = await rpc(
   'tools/call',

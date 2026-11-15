@@ -65,6 +65,10 @@ static class Program
 
     static int Run(string[] args)
     {
+        // FR #635: /airc slash command — live airc host PickList (selection only; use is FR #636).
+        if (args.Length > 0 && args[0].Equals("/airc", StringComparison.OrdinalIgnoreCase))
+            return AircSlashCommand.Run();
+
         // MCP stdio server mode: stdout carries JSON-RPC only - nothing else may print.
         int mi = Array.FindIndex(args, a => a.Equals("--mcp-catalog", StringComparison.OrdinalIgnoreCase));
         if (mi >= 0)
@@ -699,7 +703,15 @@ static class Program
 
     static bool TryFetchHoursList(string query, out string json, out string detail)
     {
-        json = "";
+        // FR #619: spinner on the blocking hours list GET. Relaunch and SKIP stay in the caller.
+        var result = HoursListFetch.Run(() => FetchHoursListOnce(query));
+        json = result.Json;
+        detail = result.Detail;
+        return result.Ok;
+    }
+
+    static HoursFetchResult FetchHoursListOnce(string query)
+    {
         string url = "https://bob.ntsa.uk/bob/v1/hours?" + query;
         try
         {
@@ -707,17 +719,16 @@ static class Program
             using var resp = http.GetAsync(url).GetAwaiter().GetResult();
             if (!resp.IsSuccessStatusCode)
             {
-                detail = "hours GET HTTP " + (int)resp.StatusCode + "; delivery unverified; no retry";
-                return false;
+                string fail = "hours GET HTTP " + (int)resp.StatusCode + "; delivery unverified; no retry";
+                return new HoursFetchResult(false, "", fail);
             }
-            json = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-            detail = "";
-            return true;
+            string body = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            return new HoursFetchResult(true, body, "");
         }
         catch (Exception ex)
         {
-            detail = "hours GET unavailable; delivery unverified; no retry (" + ex.GetType().Name + ")";
-            return false;
+            string fail = "hours GET unavailable; delivery unverified; no retry (" + ex.GetType().Name + ")";
+            return new HoursFetchResult(false, "", fail);
         }
     }
 
@@ -871,7 +882,9 @@ static class Program
                                       : $"no node >= 18 found ({seen}); using PriorityAgent.exe --mcp-catalog for priority-catalog");
         }
         string want = string.Join(' ', cmd);
-        var (rc, outp, _) = Capture(grok, null, "mcp", "list");
+        // FR #618 / S3: spinner on the console UI while grok mcp list/add/doctor run.
+        // Quiet and redirected stdout (including --mcp-catalog) write nothing (S5).
+        var (rc, outp, _) = ConsoleWait.WithWait("mcp register", () => Capture(grok, null, "mcp", "list"));
         string line = outp.Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.StartsWith(McpName + ":", StringComparison.OrdinalIgnoreCase)) ?? "";
         string current = line == "" ? "" : line[(McpName.Length + 1)..].Trim();
         bool good = current.Equals(want, StringComparison.OrdinalIgnoreCase);
@@ -879,12 +892,16 @@ static class Program
         else if (DryRun) { Info($"would run: grok mcp add {McpName} -- {want}   (currently: {(current == "" ? "not registered" : current)})"); return; }
         else
         {
-            var a = new List<string> { "mcp", "add", McpName, "--" }; a.AddRange(cmd);
-            int arc = RunTo(grok, null, a.ToArray());
+            int arc = ConsoleWait.WithWait("mcp register", () =>
+            {
+                var a = new List<string> { "mcp", "add", McpName, "--" };
+                a.AddRange(cmd);
+                return RunTo(grok, null, a.ToArray());
+            });
             Check(arc == 0, $"registered MCP '{McpName}' (stdio) -> {want}{(current == "" ? "" : $" (replaced: {current})")}");
         }
         if (DryRun && !good) return;
-        var (drc, dout, derr) = Capture(grok, null, "mcp", "doctor", McpName);
+        var (drc, dout, derr) = ConsoleWait.WithWait("mcp doctor", () => Capture(grok, null, "mcp", "doctor", McpName));
         string d = (dout + derr).Trim();
         int sec = d.IndexOf(McpName + " (", StringComparison.OrdinalIgnoreCase);
         if (sec >= 0) d = d[sec..];
@@ -968,30 +985,50 @@ static class Program
 
     static void GrokInspect(string grok, string workDir)
     {
-        var (rc, outp, _) = Capture(grok, workDir, "inspect");
+        // FR #618: skills registration check is a grok process wait; spinner on the console only.
+        var (rc, outp, _) = ConsoleWait.WithWait("skills", () => Capture(grok, workDir, "inspect"));
         Check(rc == 0 && outp.Contains("priority-", StringComparison.OrdinalIgnoreCase), "grok inspect sees priority-* skills");
         Check(rc == 0 && outp.Contains(McpName, StringComparison.OrdinalIgnoreCase), $"grok inspect sees MCP '{McpName}'");
     }
 
     static void FuelCheck()
     {
+        // FR #616: spinner on the blocking fuel report GET. Continue-anyway prompt stays outside WithWait.
+        var fetched = FuelReportFetch.Run(FetchFuelReportOnce);
+        if (fetched.Ok)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(fetched.Json);
+                string m = Environment.MachineName.ToLowerInvariant();
+                if (doc.RootElement.TryGetProperty("machines", out var ms) && ms.TryGetProperty(m, out var me)
+                    && me.TryGetProperty("pcent", out var pc) && pc.TryGetProperty("grok-chat", out var g) && g.ValueKind == JsonValueKind.Number)
+                {
+                    double v = g.GetDouble();
+                    if (v > 0) { Check(true, $"fuel: grok-chat {v}% on {m} -> pool"); return; }
+                    Warn($"fuel: grok-chat is 0% on {m} (pool empty). Grok may need a session key; the launcher never handles keys.");
+                }
+                else Warn($"fuel: no grok-chat figure for {m} in the Bob report (unknown).");
+            }
+            catch (Exception ex) { Warn("fuel: Bob report unavailable (" + ex.Message + ")"); }
+        }
+        else Warn("fuel: Bob report unavailable (" + fetched.Detail + ")");
+        if (!DryRun && !Smoke && !Console.IsInputRedirected && !Ask("Continue anyway? [y/N]: ").StartsWith("y", StringComparison.OrdinalIgnoreCase))
+            throw new Exception("stopped: no grok fuel");
+    }
+
+    static FuelFetchResult FetchFuelReportOnce()
+    {
         try
         {
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
-            using var doc = JsonDocument.Parse(http.GetStringAsync(FuelUrl).GetAwaiter().GetResult());
-            string m = Environment.MachineName.ToLowerInvariant();
-            if (doc.RootElement.TryGetProperty("machines", out var ms) && ms.TryGetProperty(m, out var me)
-                && me.TryGetProperty("pcent", out var pc) && pc.TryGetProperty("grok-chat", out var g) && g.ValueKind == JsonValueKind.Number)
-            {
-                double v = g.GetDouble();
-                if (v > 0) { Check(true, $"fuel: grok-chat {v}% on {m} -> pool"); return; }
-                Warn($"fuel: grok-chat is 0% on {m} (pool empty). Grok may need a session key; the launcher never handles keys.");
-            }
-            else Warn($"fuel: no grok-chat figure for {m} in the Bob report (unknown).");
+            string body = http.GetStringAsync(FuelUrl).GetAwaiter().GetResult();
+            return new FuelFetchResult(true, body, "");
         }
-        catch (Exception ex) { Warn("fuel: Bob report unavailable (" + ex.Message + ")"); }
-        if (!DryRun && !Smoke && !Console.IsInputRedirected && !Ask("Continue anyway? [y/N]: ").StartsWith("y", StringComparison.OrdinalIgnoreCase))
-            throw new Exception("stopped: no grok fuel");
+        catch (Exception ex)
+        {
+            return new FuelFetchResult(false, "", ex.Message);
+        }
     }
 
     static int RulesVersion(string text)
@@ -1159,6 +1196,7 @@ static class Program
 PriorityAgent.exe [options]
 
   (no options)          interactive: pick customer/project, then MSI-style CLI chooser
+  /airc                 PickList of airc hosts connected on IRC (records choice only; FR #635)
   --list                list customer repos (topic priority-customer); with --customer, also list its folders
   --general             general Priority context (no customer)
   --customer <repo>     pick customer non-interactively (e.g. rees)

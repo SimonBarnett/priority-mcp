@@ -6,7 +6,7 @@
     "build": "node scripts/sync-skill-dag.mjs && next build && node scripts/check-catalog-trace.mjs && node scripts/check-dag.mjs",
     "start": "next start",
     "stdio": "node stdio.mjs",
-    "test": "node --test lib/public-origin.test.mjs lib/skill-dag.test.mjs lib/customer-overlay.test.mjs lib/fr606-home-chrome.test.mjs lib/priority-agent-download.test.mjs lib/training-explainer.test.mjs",
+    "test": "node --test lib/public-origin.test.mjs lib/skill-dag.test.mjs lib/customer-overlay.test.mjs lib/fr606-home-chrome.test.mjs lib/priority-agent-download.test.mjs lib/training-explainer.test.mjs lib/fr632-priority-mcp-name.test.mjs",
     "smoke": "node scripts/smoke-mcp.mjs",
     "smoke:live": "node scripts/smoke-mcp-live.mjs",
     "sync-dag": "node scripts/sync-skill-dag.mjs",
