@@ -61,6 +61,8 @@ var checks = new List<(string Name, Action Run)>
     ("FR-619: hours fetch TTY spinner settles done on success", TestFr619HoursFetchTtyDone),
     ("FR-619: hours fetch failure keeps detail and does not print done", TestFr619HoursFetchFailNoDone),
     ("FR-619: hours fetch source wraps the GET; relaunch SKIP stays", TestFr619HoursFetchWired),
+    ("FR-618: MCP register and doctor wrap grok waits; doctor text stays", TestFr618McpRegisterDoctorWired),
+    ("FR-618: grok inspect skills check uses WithWait", TestFr618SkillsInspectWired),
     ("MRB-633 hostile: WithWait on throw clears line and does not print done", TestMrb633WaitThrowNoDone),
     ("MRB-633 hostile: WithWait TTY emits glyphs then settle done", TestMrb633WaitTtyGlyphsAndSettle),
     ("FR-611: project PickList Down Enter selects first folder", TestFr611ProjectPickListFirstFolder),
@@ -986,6 +988,53 @@ static void TestFr619HoursFetchWired()
     Assert(src.Contains("case \"--check-hours\"", StringComparison.Ordinal), "--check-hours stays");
     Assert(src.Contains("HOURS OVERRIDE: session", StringComparison.Ordinal), "SKIP override log stays");
     Assert(src.Contains("Relaunching the agent to report hours", StringComparison.Ordinal), "relaunch prompt stays");
+}
+
+static string ReadLauncherProgram()
+{
+    string[] candidates =
+    {
+        Path.GetFullPath(Path.Combine("..", "launcher", "Program.cs")),
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher", "Program.cs")),
+        Path.GetFullPath("launcher/Program.cs"),
+    };
+    string? path = candidates.FirstOrDefault(File.Exists);
+    Assert(path is not null, "launcher/Program.cs not found");
+    return File.ReadAllText(path!);
+}
+
+static void TestFr618McpRegisterDoctorWired()
+{
+    string src = ReadLauncherProgram();
+    int method = src.IndexOf("static void EnsureGrokMcp(", StringComparison.Ordinal);
+    Assert(method >= 0, "EnsureGrokMcp missing");
+    int next = src.IndexOf("static string? FindNode(", StringComparison.Ordinal);
+    Assert(next > method, "FindNode missing after EnsureGrokMcp");
+    string window = src[method..next];
+    int listWait = window.IndexOf("WithWait(\"mcp register\"", StringComparison.Ordinal);
+    int listCapture = window.IndexOf("\"mcp\", \"list\"", StringComparison.Ordinal);
+    int addWait = window.LastIndexOf("WithWait(\"mcp register\"", StringComparison.Ordinal);
+    int addCall = window.IndexOf("\"mcp\", \"add\"", StringComparison.Ordinal);
+    int doctorWait = window.IndexOf("WithWait(\"mcp doctor\"", StringComparison.Ordinal);
+    int doctorCapture = window.IndexOf("\"mcp\", \"doctor\"", StringComparison.Ordinal);
+    Assert(listWait >= 0 && listCapture > listWait, "mcp list must run inside WithWait");
+    Assert(addWait >= 0 && addCall > addWait, "mcp add must run inside WithWait");
+    Assert(doctorWait >= 0 && doctorCapture > doctorWait, "mcp doctor must run inside WithWait");
+    Assert(window.Contains("grok mcp doctor {McpName}:", StringComparison.Ordinal), "doctor failure/success text unchanged");
+    Assert(window.Contains("handshake failed", StringComparison.Ordinal), "doctor failure check stays");
+    Assert(src.Contains("ConsoleWait.Quiet = true", StringComparison.Ordinal), "--mcp-catalog still sets Quiet");
+}
+
+static void TestFr618SkillsInspectWired()
+{
+    string src = ReadLauncherProgram();
+    int method = src.IndexOf("static void GrokInspect(", StringComparison.Ordinal);
+    Assert(method >= 0, "GrokInspect missing");
+    string window = src.Substring(method, Math.Min(700, src.Length - method));
+    int wait = window.IndexOf("WithWait(\"skills\"", StringComparison.Ordinal);
+    int capture = window.IndexOf("\"inspect\"", StringComparison.Ordinal);
+    Assert(wait >= 0 && capture > wait, "grok inspect must run inside WithWait");
+    Assert(window.Contains("grok inspect sees priority-* skills", StringComparison.Ordinal), "skills inspect message stays");
 }
 
 static void TestFr613McpCatalogSetsQuiet()
