@@ -231,12 +231,21 @@ static class Program
         }
         else if (!ListOnly)
         {
-            Console.WriteLine("\n   0. General Priority only (no customer)\n   N. New customer...");
-            string pick = Ask("Pick customer [0-" + customers.Count + "/N]: ");
-            if (pick.Equals("n", StringComparison.OrdinalIgnoreCase))
+            // FR #610: shared PickList (TTY arrows + highlight + Enter; redirected 1-based rows).
+            // --customer and --general are handled above and do not reach this picker.
+            var names = customers.Select(c => c.Name).ToList();
+            var pickItems = CustomerPick.BuildItems(names);
+            int? pickIdx = ConsolePick.PickList(pickItems, "Pick customer:");
+            if (!CustomerPick.TryResolve(names, pickIdx, out int customerIndex, out bool haitchNew))
+            {
+                Err("Invalid choice.");
+                Pause();
+                return 2;
+            }
+            if (haitchNew)
                 return Haitch($"new customer repo for {Ask("Customer name: ")} (tag it {Topic})");
-            if (int.TryParse(pick, out int n) && n >= 1 && n <= customers.Count) cust = customers[n - 1];
-            else if (pick != "0" && pick != "") { Err("Invalid choice."); Pause(); return 2; }
+            if (customerIndex >= 0)
+                cust = customers[customerIndex];
         }
         if (ListOnly && cust == null) { Summary(); Pause(); return Fails == 0 ? 0 : 1; }
 
