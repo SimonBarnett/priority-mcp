@@ -216,3 +216,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - mcp.ntsa.uk Priority Agent download: resolve GitHub releases newest-first including prereleases for exact asset PriorityAgent.exe; UI label Priority Agent never launcher; show version+sha256; pin with node:test
 - mcp home beauty MRB: when CONFLICTING after sibling FR merges, rebuild linear tip on current origin/main keep-both chrome+download+training; single-branch clones need force-fetch main before fold; GitHub can stay DIRTY on merge-commit tips that merge cleanly locally
 - Priority Agent console UX pack: child FR-B/C/D (#610-612) GIVEUP while foundation PickList FR-A #609 PR is open; comment blocked + re-offer after merge; do not stack implement PRs on open foundation
+- Priority Agent wait spinner: ConsoleWait.Quiet + IsOutputRedirected skip all writes; set Quiet before CatalogMcp.Serve so --mcp-catalog stdout stays JSON-RPC only
