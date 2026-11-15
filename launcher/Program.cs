@@ -699,7 +699,15 @@ static class Program
 
     static bool TryFetchHoursList(string query, out string json, out string detail)
     {
-        json = "";
+        // FR #619: spinner on the blocking hours list GET. Relaunch and SKIP stay in the caller.
+        var result = HoursListFetch.Run(() => FetchHoursListOnce(query));
+        json = result.Json;
+        detail = result.Detail;
+        return result.Ok;
+    }
+
+    static HoursFetchResult FetchHoursListOnce(string query)
+    {
         string url = "https://bob.ntsa.uk/bob/v1/hours?" + query;
         try
         {
@@ -707,17 +715,16 @@ static class Program
             using var resp = http.GetAsync(url).GetAwaiter().GetResult();
             if (!resp.IsSuccessStatusCode)
             {
-                detail = "hours GET HTTP " + (int)resp.StatusCode + "; delivery unverified; no retry";
-                return false;
+                string fail = "hours GET HTTP " + (int)resp.StatusCode + "; delivery unverified; no retry";
+                return new HoursFetchResult(false, "", fail);
             }
-            json = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-            detail = "";
-            return true;
+            string body = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            return new HoursFetchResult(true, body, "");
         }
         catch (Exception ex)
         {
-            detail = "hours GET unavailable; delivery unverified; no retry (" + ex.GetType().Name + ")";
-            return false;
+            string fail = "hours GET unavailable; delivery unverified; no retry (" + ex.GetType().Name + ")";
+            return new HoursFetchResult(false, "", fail);
         }
     }
 

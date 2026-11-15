@@ -58,6 +58,9 @@ var checks = new List<(string Name, Action Run)>
     ("FR-613: wait spinner preview has >=2 distinct glyphs", TestFr613WaitSpinnerGlyphs),
     ("FR-613: redirected / Quiet WithWait writes nothing", TestFr613WaitQuietNoWrites),
     ("FR-613: Program sets Quiet before --mcp-catalog serve", TestFr613McpCatalogSetsQuiet),
+    ("FR-619: hours fetch TTY spinner settles done on success", TestFr619HoursFetchTtyDone),
+    ("FR-619: hours fetch failure keeps detail and does not print done", TestFr619HoursFetchFailNoDone),
+    ("FR-619: hours fetch source wraps the GET; relaunch SKIP stays", TestFr619HoursFetchWired),
     ("MRB-633 hostile: WithWait on throw clears line and does not print done", TestMrb633WaitThrowNoDone),
     ("MRB-633 hostile: WithWait TTY emits glyphs then settle done", TestMrb633WaitTtyGlyphsAndSettle),
     ("FR-611: project PickList Down Enter selects first folder", TestFr611ProjectPickListFirstFolder),
@@ -926,6 +929,63 @@ static void TestFr613WaitQuietNoWrites()
         Assert(tty.Writes.Count == 0, "Quiet must not write spinner (MCP stdout)");
     }
     finally { ConsoleWait.Quiet = prev; }
+}
+
+static void TestFr619HoursFetchTtyDone()
+{
+    bool prev = ConsoleWait.Quiet;
+    try
+    {
+        ConsoleWait.Quiet = false;
+        var tty = new ScriptedWaitIO(redirected: false);
+        var result = HoursListFetch.Run(() =>
+        {
+            Thread.Sleep(80);
+            return new HoursFetchResult(true, "{\"ok\":true}", "");
+        }, tty);
+        Assert(result.Ok && result.Json == "{\"ok\":true}", "success payload");
+        string joined = string.Concat(tty.Writes);
+        Assert(ConsoleWait.Glyphs.Any(g => joined.Contains(g)), "TTY hours fetch must show a spinner glyph");
+        Assert(joined.Contains("hours fetch done", StringComparison.Ordinal), "success settles done");
+    }
+    finally { ConsoleWait.Quiet = prev; }
+}
+
+static void TestFr619HoursFetchFailNoDone()
+{
+    bool prev = ConsoleWait.Quiet;
+    try
+    {
+        ConsoleWait.Quiet = false;
+        var tty = new ScriptedWaitIO(redirected: false);
+        const string detail = "hours GET HTTP 503; delivery unverified; no retry";
+        var result = HoursListFetch.Run(() => new HoursFetchResult(false, "", detail), tty);
+        Assert(!result.Ok && result.Detail == detail && result.Json.Length == 0, "failure detail preserved");
+        string joined = string.Concat(tty.Writes);
+        Assert(!joined.Contains("done", StringComparison.Ordinal), "failed hours fetch must not print done");
+        var redirected = new ScriptedWaitIO(redirected: true);
+        result = HoursListFetch.Run(() => new HoursFetchResult(false, "x", detail), redirected);
+        Assert(!result.Ok && result.Detail == detail, "redirected failure detail");
+        Assert(redirected.Writes.Count == 0, "redirected hours fetch must not write");
+    }
+    finally { ConsoleWait.Quiet = prev; }
+}
+
+static void TestFr619HoursFetchWired()
+{
+    string[] candidates =
+    {
+        Path.GetFullPath(Path.Combine("..", "launcher", "Program.cs")),
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher", "Program.cs")),
+        Path.GetFullPath("launcher/Program.cs"),
+    };
+    string? path = candidates.FirstOrDefault(File.Exists);
+    Assert(path is not null, "launcher/Program.cs not found for hours fetch pin");
+    string src = File.ReadAllText(path!);
+    Assert(src.Contains("HoursListFetch.Run", StringComparison.Ordinal), "hours GET must use HoursListFetch");
+    Assert(src.Contains("case \"--check-hours\"", StringComparison.Ordinal), "--check-hours stays");
+    Assert(src.Contains("HOURS OVERRIDE: session", StringComparison.Ordinal), "SKIP override log stays");
+    Assert(src.Contains("Relaunching the agent to report hours", StringComparison.Ordinal), "relaunch prompt stays");
 }
 
 static void TestFr613McpCatalogSetsQuiet()
