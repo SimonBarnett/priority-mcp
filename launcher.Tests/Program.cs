@@ -61,6 +61,9 @@ var checks = new List<(string Name, Action Run)>
     ("FR-619: hours fetch TTY spinner settles done on success", TestFr619HoursFetchTtyDone),
     ("FR-619: hours fetch failure keeps detail and does not print done", TestFr619HoursFetchFailNoDone),
     ("FR-619: hours fetch source wraps the GET; relaunch SKIP stays", TestFr619HoursFetchWired),
+    ("FR-616: fuel report TTY spinner settles done on success", TestFr616FuelReportTtyDone),
+    ("FR-616: fuel report failure keeps detail and does not print done", TestFr616FuelReportFailNoDone),
+    ("FR-616: fuel report source wraps GET; --no-fuel-check and Continue stay", TestFr616FuelReportWired),
     ("MRB-633 hostile: WithWait on throw clears line and does not print done", TestMrb633WaitThrowNoDone),
     ("MRB-633 hostile: WithWait TTY emits glyphs then settle done", TestMrb633WaitTtyGlyphsAndSettle),
     ("FR-611: project PickList Down Enter selects first folder", TestFr611ProjectPickListFirstFolder),
@@ -986,6 +989,63 @@ static void TestFr619HoursFetchWired()
     Assert(src.Contains("case \"--check-hours\"", StringComparison.Ordinal), "--check-hours stays");
     Assert(src.Contains("HOURS OVERRIDE: session", StringComparison.Ordinal), "SKIP override log stays");
     Assert(src.Contains("Relaunching the agent to report hours", StringComparison.Ordinal), "relaunch prompt stays");
+}
+
+static void TestFr616FuelReportTtyDone()
+{
+    bool prev = ConsoleWait.Quiet;
+    try
+    {
+        ConsoleWait.Quiet = false;
+        var tty = new ScriptedWaitIO(redirected: false);
+        var result = FuelReportFetch.Run(() =>
+        {
+            Thread.Sleep(80);
+            return new FuelFetchResult(true, "{\"machines\":{}}", "");
+        }, tty);
+        Assert(result.Ok && result.Json.Contains("machines", StringComparison.Ordinal), "success payload");
+        string joined = string.Concat(tty.Writes);
+        Assert(ConsoleWait.Glyphs.Any(g => joined.Contains(g)), "TTY fuel report must show a spinner glyph");
+        Assert(joined.Contains("fuel report done", StringComparison.Ordinal), "success settles done");
+    }
+    finally { ConsoleWait.Quiet = prev; }
+}
+
+static void TestFr616FuelReportFailNoDone()
+{
+    bool prev = ConsoleWait.Quiet;
+    try
+    {
+        ConsoleWait.Quiet = false;
+        var tty = new ScriptedWaitIO(redirected: false);
+        const string detail = "A task was canceled.";
+        var result = FuelReportFetch.Run(() => new FuelFetchResult(false, "", detail), tty);
+        Assert(!result.Ok && result.Detail == detail && result.Json.Length == 0, "failure detail preserved");
+        string joined = string.Concat(tty.Writes);
+        Assert(!joined.Contains("done", StringComparison.Ordinal), "failed fuel report must not print done");
+        var redirected = new ScriptedWaitIO(redirected: true);
+        result = FuelReportFetch.Run(() => new FuelFetchResult(false, "x", detail), redirected);
+        Assert(!result.Ok && result.Detail == detail, "redirected failure detail");
+        Assert(redirected.Writes.Count == 0, "redirected fuel report must not write");
+    }
+    finally { ConsoleWait.Quiet = prev; }
+}
+
+static void TestFr616FuelReportWired()
+{
+    string[] candidates =
+    {
+        Path.GetFullPath(Path.Combine("..", "launcher", "Program.cs")),
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher", "Program.cs")),
+        Path.GetFullPath("launcher/Program.cs"),
+    };
+    string? path = candidates.FirstOrDefault(File.Exists);
+    Assert(path is not null, "launcher/Program.cs not found for fuel report pin");
+    string src = File.ReadAllText(path!);
+    Assert(src.Contains("FuelReportFetch.Run", StringComparison.Ordinal), "fuel GET must use FuelReportFetch");
+    Assert(src.Contains("case \"--no-fuel-check\"", StringComparison.Ordinal), "--no-fuel-check stays");
+    Assert(src.Contains("Continue anyway?", StringComparison.Ordinal), "Continue anyway prompt stays");
+    Assert(src.Contains("if (!NoFuel) FuelCheck()", StringComparison.Ordinal), "--no-fuel-check skips FuelCheck");
 }
 
 static void TestFr613McpCatalogSetsQuiet()
