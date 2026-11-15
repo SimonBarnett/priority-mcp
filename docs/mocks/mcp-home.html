@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>mcp.ntsa.uk — Priority skills</title>
+  <link rel="stylesheet" href="site.css"/>
+</head>
+<body>
+  <div class="shell">
+    <header class="site-header">
+      <a class="brand" href="mcp-home.html">
+        <span class="brand-mark" aria-hidden="true">M</span>
+        <span class="brand-text"><strong>mcp.ntsa.uk</strong><span>Priority skill catalog</span></span>
+      </a>
+      <nav class="nav" aria-label="Primary">
+        <a href="https://bob.ntsa.uk/">bob.ntsa.uk</a>
+        <a href="mcp-home.html" aria-current="page">Catalog</a>
+        <a href="https://github.com/SimonBarnett/priority-mcp">GitHub</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">Catalog MCP</div>
+        <h1>Skills the Priority agent knows how to grab.</h1>
+        <p>
+          This host publishes a catalog of Priority / Medatech playbooks.
+          Agents <strong>download a skill here</strong>, then run it against
+          ERP instances <strong>you</strong> allowlisted on your machine.
+          mcp.ntsa.uk does not compile forms and cannot see on-prem SQL.
+        </p>
+        <div class="actions">
+          <a class="btn btn-gold" href="https://github.com/SimonBarnett/priority-mcp/releases/latest/download/PriorityAgent.exe">Download Priority Agent</a>
+          <a class="btn btn-primary" href="https://mcp.ntsa.uk/mcp">MCP endpoint</a>
+          <a class="btn btn-ghost" href="https://bob.ntsa.uk/">Back to bob.ntsa.uk</a>
+        </div>
+      </div>
+      <aside class="hero-panel">
+        <h2>Add the MCP</h2>
+        <div class="stat"><span>Transport</span><code>HTTP</code></div>
+        <div class="stat"><span>URL</span><code>https://mcp.ntsa.uk/mcp</code></div>
+        <p style="margin:0;font-size:0.88rem;opacity:0.85">
+          Example: <code>grok mcp add --transport http priority-catalog https://mcp.ntsa.uk/mcp</code>
+        </p>
+      </aside>
+    </section>
+
+    <div class="train">
+      <h2>What the agent has been trained on</h2>
+      <p style="margin:0;color:var(--ink-soft)">
+        Plain English: the catalog is a library of <strong>repeatable Priority procedures</strong>
+        harvested from Medatech-network lessons and field playbooks — form preparation,
+        procedure prep, OData, hours, backups, service-desk fixes, UAT smokes, and more.
+        Each skill is a focused recipe with hard rules (allowlisted instances, SQL gates,
+        no invented WCF URLs). The agent is not a free-form ERP brain; it <em>selects and follows</em>
+        these skills on your side after you connect your instances.
+      </p>
+      <ul>
+        <li>Grab skill markdown / JSON from this catalog (MCP tools).</li>
+        <li>Execute locally with your CredMan / instances.json allowlist.</li>
+        <li>This public host never receives your passwords or company SQL.</li>
+      </ul>
+    </div>
+
+    <div class="section-title">
+      <h2>Skill shelf (teaser)</h2>
+      <span>Full list remains on the live catalog page</span>
+    </div>
+    <div class="grid">
+      <article class="card">
+        <span class="pill">Forms</span>
+        <h3>Named form prep</h3>
+        <p>Prepare one Priority form by ENAME with SQL-gated success.</p>
+      </article>
+      <article class="card">
+        <span class="pill">Hours</span>
+        <h3>Hours orchestrator</h3>
+        <p>Standing rules for timesheets, WBS, draft-then-confirm.</p>
+      </article>
+      <article class="card">
+        <span class="pill">Ops</span>
+        <h3>Install / upgrade</h3>
+        <p>Priority install, SSL, and post-reboot service recovery lessons.</p>
+      </article>
+    </div>
+
+    <footer class="site-footer">
+      <span>Download label is always <strong>Priority Agent</strong></span>
+      <span><a href="https://bob.ntsa.uk/">bob.ntsa.uk</a> · <a href="https://github.com/SimonBarnett/priority-mcp">GitHub</a></span>
+    </footer>
+  </div>
+</body>
+</html>
