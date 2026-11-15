@@ -12,6 +12,10 @@ var checks = new List<(string Name, Action Run)>
     ("airc source files and template are gone", TestAircFilesGone),
     ("README documents WCF client only", TestReadmeWcfOnly),
     ("FR-620: README documents Up/Down/Enter and wait glyphs", TestFr620ReadmeInteractiveUx),
+    ("FR-636: selection routes relay to the chosen host channel", TestFr636RoutesToSelectedChannel),
+    ("FR-636: new session has no selection and leaves default relay", TestFr636NewSessionUnselected),
+    ("FR-636: missing host errors and does not fall back", TestFr636GoneDoesNotFallback),
+    ("FR-636: re-select switches the target channel", TestFr636ReselectSwitches),
     ("agent-rules use WCF_SECTION not AIRC_SECTION", TestAgentRulesWcfPlaceholder),
     ("command line size guard still works", TestCommandLineSize),
     ("dirty clone plus stub uses the dirty clone", TestDirtyClonePreferredOverStub),
@@ -263,6 +267,58 @@ static void TestFr620ReadmeInteractiveUx()
         && readme.Contains("--no-fuel-check", StringComparison.Ordinal),
         "README must say non-interactive flags stay");
     Assert(readme.Contains("--mcp-catalog", StringComparison.Ordinal), "README must keep MCP stdout out of the spinner");
+}
+
+static void TestFr636RoutesToSelectedChannel()
+{
+    var session = new AircSession();
+    session.Select("host-a");
+    var irc = new FixtureAircTransport();
+    irc.Connected.Add("host-a");
+    string channel = session.Relay(irc, "prepare");
+    Assert(channel == "#host-a" && irc.Sent.Count == 1 && irc.Sent[0].Operation == "prepare", "relay must use the selected host channel");
+    Assert(irc.UnselectedCalls == 0, "selected relay must not use the default path");
+    Assert(session.StatusSuffix.Contains("host-a", StringComparison.Ordinal), "status shows the selection");
+}
+
+static void TestFr636NewSessionUnselected()
+{
+    var session = new AircSession();
+    Assert(session.SelectedHost is null && session.StatusSuffix.Length == 0, "new session has no selection");
+    var irc = new FixtureAircTransport();
+    irc.Connected.Add("host-a");
+    string result = session.Relay(irc, "query");
+    Assert(result == "default:query" && irc.Sent.Count == 0 && irc.UnselectedCalls == 1, "no selection keeps today's relay");
+}
+
+static void TestFr636GoneDoesNotFallback()
+{
+    var session = new AircSession();
+    session.Select("host-a");
+    var irc = new FixtureAircTransport();
+    irc.Connected.Add("host-b");
+    bool threw = false;
+    try { session.Relay(irc, "prepare"); }
+    catch (AircHostUnavailableException ex)
+    {
+        threw = true;
+        Assert(ex.Message.Contains("host-a", StringComparison.Ordinal) && ex.Message.Contains("/airc", StringComparison.Ordinal),
+            "error names the host and offers /airc");
+    }
+    Assert(threw && irc.Sent.Count == 0 && irc.UnselectedCalls == 0, "gone host must not fall back");
+}
+
+static void TestFr636ReselectSwitches()
+{
+    var session = new AircSession();
+    var irc = new FixtureAircTransport();
+    irc.Connected.Add("host-a");
+    irc.Connected.Add("host-b");
+    session.Select("host-a");
+    session.Relay(irc, "one");
+    session.Select("host-b");
+    session.Relay(irc, "two");
+    Assert(irc.Sent.Count == 2 && irc.Sent[0].Channel == "#host-a" && irc.Sent[1].Channel == "#host-b", "re-select switches channel");
 }
 
 static void TestAgentRulesWcfPlaceholder()
@@ -1253,58 +1309,6 @@ static void TestFr610CustomerRedirectedFirst()
     Assert(customerIndex == 0 && names[customerIndex] == "rees" && !haitchNew, $"expected rees from redirected 2, index={customerIndex}");
 }
 
-static string ReadLauncherProgramSrc()
-{
-    string[] candidates =
-    {
-        Path.GetFullPath(Path.Combine("..", "launcher", "Program.cs")),
-        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher", "Program.cs")),
-        Path.GetFullPath("launcher/Program.cs"),
-    };
-    string? path = candidates.FirstOrDefault(File.Exists);
-    Assert(path is not null, "launcher/Program.cs not found");
-    return File.ReadAllText(path!);
-}
-
-static void TestFr615ListCustomersUsesWithWait()
-{
-    string src = ReadLauncherProgramSrc();
-    int method = src.IndexOf("static List<Customer> ListCustomers()", StringComparison.Ordinal);
-    Assert(method >= 0, "ListCustomers method missing");
-    string window = src.Substring(method, Math.Min(2500, src.Length - method));
-    int wait = window.IndexOf("ConsoleWait.WithWait", StringComparison.Ordinal);
-    int capture = window.IndexOf("Capture(Gh", StringComparison.Ordinal);
-    Assert(wait >= 0, "ListCustomers must wrap with ConsoleWait.WithWait (S3 spinner on gh api)");
-    Assert(capture > wait, "Capture(Gh api) must run inside WithWait");
-    Assert(window.Contains("customers", StringComparison.OrdinalIgnoreCase) || window.Contains("\"customer", StringComparison.OrdinalIgnoreCase),
-        "WithWait label should mention customers");
-}
-
-static void TestFr615ListCustomersFailurePathPin()
-{
-    string src = ReadLauncherProgramSrc();
-    int method = src.IndexOf("static List<Customer> ListCustomers()", StringComparison.Ordinal);
-    Assert(method >= 0, "ListCustomers method missing");
-    string window = src.Substring(method, Math.Min(2500, src.Length - method));
-    Assert(window.Contains("gh api failed", StringComparison.Ordinal), "failure must Err with gh api failed");
-    Assert(window.Contains("return new()", StringComparison.Ordinal) || window.Contains("return new List", StringComparison.Ordinal),
-        "failure must return empty list");
-    Assert(src.Contains("var customers = ListCustomers()", StringComparison.Ordinal), "--list / interactive still call ListCustomers");
-}
-
-static void TestFr642ListCustomersFailThrowsForSettle()
-{
-    string src = ReadLauncherProgramSrc();
-    int method = src.IndexOf("static List<Customer> ListCustomers()", StringComparison.Ordinal);
-    Assert(method >= 0, "ListCustomers method missing");
-    string window = src.Substring(method, Math.Min(2500, src.Length - method));
-    int wait = window.IndexOf("ConsoleWait.WithWait", StringComparison.Ordinal);
-    int err = window.IndexOf("Err(\"gh api failed", StringComparison.Ordinal);
-    int thr = window.IndexOf("throw new InvalidOperationException", StringComparison.Ordinal);
-    Assert(wait >= 0 && err > wait && thr > err, "Err then throw must run inside WithWait so settle skips done");
-    Assert(window.Contains("catch (InvalidOperationException)", StringComparison.Ordinal), "catch outside WithWait returns empty");
-}
-
 static string Fr635FixtureSeveralHosts() => """
 {"airc_console_details":[
   {"nick":"host-a_console","channel":"#shop-a","machine":"host-a","domain":"DEV","workgroup":"WG1"},
@@ -1397,13 +1401,7 @@ static void TestFr635RedirectedAndEsc()
 
 static void TestFr635ProgramWiresSlash()
 {
-    string[] candidates =
-    {
-        Path.GetFullPath(Path.Combine("..", "launcher", "Program.cs")),
-        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher", "Program.cs")),
-        Path.GetFullPath("launcher/Program.cs"),
-    };
-    string? path = candidates.FirstOrDefault(File.Exists);
+    string? path = FindLauncherProgramPath();
     Assert(path is not null, "Program.cs missing");
     string src = File.ReadAllText(path!);
     Assert(src.Contains("\"/airc\"", StringComparison.Ordinal) && src.Contains("AircSlashCommand.Run", StringComparison.Ordinal),
@@ -1411,6 +1409,63 @@ static void TestFr635ProgramWiresSlash()
     Assert(src.Contains("ConsolePick.PickList", StringComparison.Ordinal) ||
         File.ReadAllText(Path.Combine(Path.GetDirectoryName(path!)!, "AircSlashCommand.cs")).Contains("ConsolePick.PickList", StringComparison.Ordinal),
         "PickList reused not copied");
+}
+
+static string? FindLauncherProgramPath()
+{
+    string[] candidates =
+    {
+        Path.GetFullPath(Path.Combine("..", "launcher", "Program.cs")),
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher", "Program.cs")),
+        Path.GetFullPath("launcher/Program.cs"),
+    };
+    return candidates.FirstOrDefault(File.Exists);
+}
+
+static string ReadLauncherProgramSrc()
+{
+    string? path = FindLauncherProgramPath();
+    Assert(path is not null, "launcher/Program.cs not found");
+    return File.ReadAllText(path!);
+}
+
+static void TestFr615ListCustomersUsesWithWait()
+{
+    string src = ReadLauncherProgramSrc();
+    int method = src.IndexOf("static List<Customer> ListCustomers()", StringComparison.Ordinal);
+    Assert(method >= 0, "ListCustomers method missing");
+    string window = src.Substring(method, Math.Min(2500, src.Length - method));
+    int wait = window.IndexOf("ConsoleWait.WithWait", StringComparison.Ordinal);
+    int capture = window.IndexOf("Capture(Gh", StringComparison.Ordinal);
+    Assert(wait >= 0, "ListCustomers must wrap with ConsoleWait.WithWait (S3 spinner on gh api)");
+    Assert(capture > wait, "Capture(Gh api) must run inside WithWait");
+    Assert(window.Contains("customers", StringComparison.OrdinalIgnoreCase) || window.Contains("\"customer", StringComparison.OrdinalIgnoreCase),
+        "WithWait label should mention customers");
+}
+
+static void TestFr615ListCustomersFailurePathPin()
+{
+    string src = ReadLauncherProgramSrc();
+    int method = src.IndexOf("static List<Customer> ListCustomers()", StringComparison.Ordinal);
+    Assert(method >= 0, "ListCustomers method missing");
+    string window = src.Substring(method, Math.Min(2500, src.Length - method));
+    Assert(window.Contains("gh api failed", StringComparison.Ordinal), "failure must Err with gh api failed");
+    Assert(window.Contains("return new()", StringComparison.Ordinal) || window.Contains("return new List", StringComparison.Ordinal),
+        "failure must return empty list");
+    Assert(src.Contains("var customers = ListCustomers()", StringComparison.Ordinal), "--list / interactive still call ListCustomers");
+}
+
+static void TestFr642ListCustomersFailThrowsForSettle()
+{
+    string src = ReadLauncherProgramSrc();
+    int method = src.IndexOf("static List<Customer> ListCustomers()", StringComparison.Ordinal);
+    Assert(method >= 0, "ListCustomers method missing");
+    string window = src.Substring(method, Math.Min(2500, src.Length - method));
+    int wait = window.IndexOf("ConsoleWait.WithWait", StringComparison.Ordinal);
+    int err = window.IndexOf("Err(\"gh api failed", StringComparison.Ordinal);
+    int thr = window.IndexOf("throw new InvalidOperationException", StringComparison.Ordinal);
+    Assert(wait >= 0 && err > wait && thr > err, "Err then throw must run inside WithWait so settle skips done");
+    Assert(window.Contains("catch (InvalidOperationException)", StringComparison.Ordinal), "catch outside WithWait returns empty");
 }
 
 static string NewTemp()
@@ -1446,4 +1501,25 @@ static void DeleteTempDirectory(string path)
 static void Assert(bool condition, string message)
 {
     if (!condition) throw new InvalidOperationException(message);
+}
+
+sealed class FixtureAircTransport : IAircTransport
+{
+    public HashSet<string> Connected { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public List<(string Channel, string Operation)> Sent { get; } = new();
+    public int UnselectedCalls { get; private set; }
+
+    public bool IsConnected(string host) => Connected.Contains(host);
+
+    public string Send(string channel, string operation)
+    {
+        Sent.Add((channel, operation));
+        return channel;
+    }
+
+    public string RelayUnselected(string operation)
+    {
+        UnselectedCalls++;
+        return "default:" + operation;
+    }
 }
