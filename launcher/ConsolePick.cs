@@ -5,7 +5,7 @@ namespace PriorityAgent;
 /// Esc/cancel policy: Esc (or Ctrl+C if surfaced as Escape) returns null — caller treats as cancel.
 /// Redirected stdin: numbered Ask / ReadLine (1-based); blank or out-of-range returns null.
 /// Do not call from --mcp-catalog JSON-RPC paths (keep MCP stdout clean; S5).
-/// Call sites (customer / project / CLI chooser) are wired in later FRs — this file is foundation only.
+/// Call sites: project folder picker wired in FR #611; customer / CLI chooser remain later FRs.
 /// </summary>
 public interface IConsolePickIO
 {

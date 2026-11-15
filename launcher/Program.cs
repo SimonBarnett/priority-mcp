@@ -248,7 +248,6 @@ static class Program
             var folders = Directory.GetDirectories(custDir).Select(Path.GetFileName).Where(n => n != null && !n.StartsWith('.'))
                                    .Cast<string>().OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
             Check(true, $"{folders.Count} folder(s) in {custDir} (dot-folders skipped)");
-            for (int i = 0; i < folders.Count; i++) Console.WriteLine($"  {i + 1,2}. {folders[i]}");
 
             if (ProjectArg != null)
             {
@@ -257,12 +256,17 @@ static class Program
             }
             else if (!ListOnly && CustomerArg == null)
             {
-                Console.WriteLine("\n   0. Customer level only (no project)\n   N. New project / service call...");
-                string pick = Ask("Pick project [0-" + folders.Count + "/N]: ");
-                if (pick.Equals("n", StringComparison.OrdinalIgnoreCase))
+                // FR #611: shared PickList (TTY arrows + highlight + Enter; redirected 1-based rows).
+                var pickItems = ProjectFolderPick.BuildItems(folders);
+                int? pickIdx = ConsolePick.PickList(pickItems, "Pick project:");
+                if (!ProjectFolderPick.TryResolve(folders, pickIdx, out project, out bool haitchNew))
+                {
+                    Err("Invalid choice.");
+                    Pause();
+                    return 2;
+                }
+                if (haitchNew)
                     return Haitch($"new project folder {Ask("Project / service-call name (e.g. SC263999): ")} in {cust.FullName}");
-                if (int.TryParse(pick, out int n) && n >= 1 && n <= folders.Count) project = folders[n - 1];
-                else if (pick != "0" && pick != "") { Err("Invalid choice."); Pause(); return 2; }
             }
             if (project != null) projectDir = Path.Combine(custDir, project);
             if (project != null && !BobHours.IsAuthoritativeProjectFolder(project))
