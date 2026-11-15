@@ -58,6 +58,9 @@ var checks = new List<(string Name, Action Run)>
     ("FR-611: project PickList Down Enter selects first folder", TestFr611ProjectPickListFirstFolder),
     ("FR-611: project resolve customer-level / folder / New / cancel", TestFr611ProjectResolveRows),
     ("FR-611: redirected project pick 2 selects first folder", TestFr611ProjectRedirectedFirstFolder),
+    ("FR-610: customer PickList Down Enter selects first customer", TestFr610CustomerPickListFirstCustomer),
+    ("FR-610: customer resolve General / customer / New / cancel", TestFr610CustomerResolveRows),
+    ("FR-610: redirected customer pick 2 selects first customer", TestFr610CustomerRedirectedFirst),
 };
 
 int failures = 0;
@@ -930,6 +933,44 @@ static void TestFr611ProjectRedirectedFirstFolder()
     int? picked = ConsolePick.PickList(items, "Pick project:", io);
     Assert(ProjectFolderPick.TryResolve(folders, picked, out string? project, out bool haitchNew), "resolve");
     Assert(project == "SC100" && !haitchNew, $"expected SC100 from redirected 2, got {project}");
+}
+
+static void TestFr610CustomerPickListFirstCustomer()
+{
+    var names = new[] { "rees", "other" };
+    var items = CustomerPick.BuildItems(names);
+    var io = new ScriptedPickIO(
+        redirected: false,
+        keys: new[]
+        {
+            new ConsoleKeyInfo('\0', ConsoleKey.DownArrow, false, false, false),
+            new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false),
+        });
+    int? picked = ConsolePick.PickList(items, "Pick customer:", io);
+    Assert(CustomerPick.TryResolve(names, picked, out int customerIndex, out bool haitchNew), "resolve must succeed");
+    Assert(!haitchNew && customerIndex == 0 && names[customerIndex] == "rees", $"expected rees, index={customerIndex} haitch={haitchNew}");
+}
+
+static void TestFr610CustomerResolveRows()
+{
+    var names = new[] { "rees", "other" };
+    Assert(CustomerPick.BuildItems(names).Count == 4, "General + 2 customers + New");
+    Assert(CustomerPick.TryResolve(names, 0, out int i0, out bool h0) && i0 < 0 && !h0, "0 = General");
+    Assert(CustomerPick.TryResolve(names, 1, out int i1, out bool h1) && i1 == 0 && !h1, "1 = first customer");
+    Assert(CustomerPick.TryResolve(names, 2, out int i2, out bool h2) && i2 == 1 && !h2, "2 = second customer");
+    Assert(CustomerPick.TryResolve(names, 3, out int i3, out bool h3) && i3 < 0 && h3, "3 = New/Haitch");
+    Assert(!CustomerPick.TryResolve(names, null, out _, out _), "null index cancels");
+    Assert(!CustomerPick.TryResolve(names, 99, out _, out _), "out of range cancels");
+}
+
+static void TestFr610CustomerRedirectedFirst()
+{
+    var names = new[] { "rees", "other" };
+    var items = CustomerPick.BuildItems(names);
+    var io = new ScriptedPickIO(redirected: true, lines: new[] { "2" });
+    int? picked = ConsolePick.PickList(items, "Pick customer:", io);
+    Assert(CustomerPick.TryResolve(names, picked, out int customerIndex, out bool haitchNew), "resolve");
+    Assert(customerIndex == 0 && names[customerIndex] == "rees" && !haitchNew, $"expected rees from redirected 2, index={customerIndex}");
 }
 
 static string NewTemp()
