@@ -11,6 +11,7 @@ var checks = new List<(string Name, Action Run)>
     ("session instances file has no secrets", TestSessionInstancesNoSecrets),
     ("airc source files and template are gone", TestAircFilesGone),
     ("README documents WCF client only", TestReadmeWcfOnly),
+    ("FR-620: README documents Up/Down/Enter and wait glyphs", TestFr620ReadmeInteractiveUx),
     ("agent-rules use WCF_SECTION not AIRC_SECTION", TestAgentRulesWcfPlaceholder),
     ("command line size guard still works", TestCommandLineSize),
     ("dirty clone plus stub uses the dirty clone", TestDirtyClonePreferredOverStub),
@@ -234,6 +235,24 @@ static void TestReadmeWcfOnly()
     Assert(readme.Contains("removed", StringComparison.OrdinalIgnoreCase)
         || readme.Contains("ignored", StringComparison.OrdinalIgnoreCase),
         "README should mention legacy airc ignore / removed flags");
+}
+
+static void TestFr620ReadmeInteractiveUx()
+{
+    string launcherDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher"));
+    string readmePath = Path.Combine(launcherDir, "README.md");
+    if (!File.Exists(readmePath))
+        readmePath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "launcher", "README.md"));
+    Assert(File.Exists(readmePath), "launcher/README.md not found");
+    string readme = File.ReadAllText(readmePath);
+    Assert(readme.Contains("## Interactive console UX", StringComparison.Ordinal), "README needs an interactive UX section");
+    Assert(readme.Contains("Up/Down/Enter", StringComparison.Ordinal), "README must name Up/Down/Enter");
+    Assert(readme.Contains("`|` `/` `-` `\\`", StringComparison.Ordinal), "README must name the wait glyphs");
+    Assert(readme.Contains("Non-interactive flags are unchanged", StringComparison.Ordinal)
+        && readme.Contains("--customer", StringComparison.Ordinal)
+        && readme.Contains("--no-fuel-check", StringComparison.Ordinal),
+        "README must say non-interactive flags stay");
+    Assert(readme.Contains("--mcp-catalog", StringComparison.Ordinal), "README must keep MCP stdout out of the spinner");
 }
 
 static void TestAgentRulesWcfPlaceholder()
