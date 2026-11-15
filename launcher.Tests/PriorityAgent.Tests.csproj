@@ -24,6 +24,7 @@
     <Compile Include="../launcher/FuelReportFetch.cs" Link="FuelReportFetch.cs" />
     <Compile Include="../launcher/ProjectFolderPick.cs" Link="ProjectFolderPick.cs" />
     <Compile Include="../launcher/CustomerPick.cs" Link="CustomerPick.cs" />
+    <Compile Include="../launcher/AircSession.cs" Link="AircSession.cs" />
     <Compile Include="../launcher/SessionLoginMeta.cs" Link="SessionLoginMeta.cs" />
     <None Include="fixtures/**/*" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../launcher/agent-rules.md" Link="fixtures/agent-rules.md" CopyToOutputDirectory="PreserveNewest" />
