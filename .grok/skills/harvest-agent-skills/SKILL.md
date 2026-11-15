@@ -223,3 +223,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - Catalogue user-visible name is Priority MCP (page chrome + serverInfo.name); keep mcp.ntsa.uk host and Priority Agent download labels unchanged
 - Airc session host is process memory only: relay to that host channel, error with /airc and no fallback when it drops, and a fresh session has no selection.
 - Ship PriorityAgent.exe as non-prerelease: change launcher-release.yml to full release + gh release edit --prerelease=false --latest on the current launcher-v* tag so /releases/latest/download works
+- In top-level C# test Program.cs projects, put helper types (e.g. ScriptedPickIO) in their own .cs file --- a class among top-level statements hits CS8803
