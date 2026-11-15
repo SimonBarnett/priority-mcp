@@ -218,3 +218,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - Priority Agent console UX pack: child FR-B/C/D (#610-612) GIVEUP while foundation PickList FR-A #609 PR is open; comment blocked + re-offer after merge; do not stack implement PRs on open foundation
 - Priority Agent wait spinner: ConsoleWait.Quiet + IsOutputRedirected skip all writes; set Quiet before CatalogMcp.Serve so --mcp-catalog stdout stays JSON-RPC only
 - CustomerPick mirrors ProjectFolderPick (General/names/New + TryResolve); --general/--customer stay above the interactive PickList branch; do not fold merely-behind MERGEABLE tips (FR #4649)
+- FR #619 issue text may say git fetch origin/hours; live gate wait is webhook hours list GET --- wrap that path with HoursListFetch/WithWait; throw-inside-WithWait preserves no-done on failure
