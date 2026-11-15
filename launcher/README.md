@@ -3,9 +3,10 @@
 `PriorityAgent.exe` is a Windows console launcher. It starts a **Grok coding agent for Priority ERP work**
 with the right context.
 
-**Console PickList (FR #609):** `ConsolePick.PickList` is the shared TTY arrow/highlight/Enter picker
-(Esc cancels → null; redirected stdin keeps numbered ReadLine). Not wired to customer/project/CLI
-menus yet (later FRs). Never use it on `--mcp-catalog` JSON-RPC stdout.
+**Console PickList (FR #609 / #611):** `ConsolePick.PickList` is the shared TTY arrow/highlight/Enter picker
+(Esc cancels -> null; redirected stdin keeps numbered ReadLine). The interactive **project / service-call**
+menu uses it (customer-level + folders + New as rows; `--project` unchanged; New still Ask Haitch).
+Customer / CLI menus remain later FRs. Never use it on `--mcp-catalog` JSON-RPC stdout.
 
 A per-machine **MSI** is an extra asset next to the existing `PriorityAgent.exe` pre-release (the loose
 exe stays). The MSI installs to `C:\Program Files\Priority Agent`. An interactive install offers
