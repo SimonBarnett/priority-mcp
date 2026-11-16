@@ -66,6 +66,8 @@ var checks = new List<(string Name, Action Run)>
     ("FR-613: wait spinner preview has >=2 distinct glyphs", TestFr613WaitSpinnerGlyphs),
     ("FR-613: redirected / Quiet WithWait writes nothing", TestFr613WaitQuietNoWrites),
     ("FR-613: Program sets Quiet before --mcp-catalog serve", TestFr613McpCatalogSetsQuiet),
+    ("FR-614: EnsureClone wraps clone, fetch and ff-only merge waits", TestFr614CloneWaitsWired),
+    ("FR-614: EnsureClone preserves dirty, offline and dry-run guards", TestFr614CloneGuardsPreserved),
     ("FR-619: hours fetch TTY spinner settles done on success", TestFr619HoursFetchTtyDone),
     ("FR-619: hours fetch failure keeps detail and does not print done", TestFr619HoursFetchFailNoDone),
     ("FR-619: hours fetch source wraps the GET; relaunch SKIP stays", TestFr619HoursFetchWired),
@@ -1104,6 +1106,45 @@ static void TestFr613WaitQuietNoWrites()
         Assert(tty.Writes.Count == 0, "Quiet must not write spinner (MCP stdout)");
     }
     finally { ConsoleWait.Quiet = prev; }
+}
+
+static void TestFr614CloneWaitsWired()
+{
+    string src = ReadLauncherProgram();
+    int start = src.IndexOf("static string? EnsureClone(", StringComparison.Ordinal);
+    int end = src.IndexOf("static List<Customer> ListCustomers()", start, StringComparison.Ordinal);
+    string window = src[start..end];
+    Assert(window.Contains("ConsoleWait.WithWait(\"clone\", () => RunTo(Gh, CloneRoot, \"repo\", \"clone\", fullName, preferred))", StringComparison.Ordinal),
+        "clone must execute inside WithWait");
+    Assert(window.Contains("ConsoleWait.WithWait(\"fetch\", () => RunTo(Git, dir, \"fetch\", \"--prune\", \"--quiet\", \"origin\"))", StringComparison.Ordinal),
+        "fetch must execute inside WithWait with existing flags");
+    Assert(window.Contains("ConsoleWait.WithWait(\"fast-forward\", () => RunTo(Git, dir, \"merge\", \"--ff-only\", \"--quiet\", $\"origin/{branch}\"))", StringComparison.Ordinal),
+        "merge must execute inside WithWait and remain ff-only");
+}
+
+static void TestFr614CloneGuardsPreserved()
+{
+    string src = ReadLauncherProgram();
+    int start = src.IndexOf("static string? EnsureClone(", StringComparison.Ordinal);
+    int end = src.IndexOf("static List<Customer> ListCustomers()", start, StringComparison.Ordinal);
+    string window = src[start..end];
+    int clone = window.IndexOf("ConsoleWait.WithWait(\"clone\"", StringComparison.Ordinal);
+    int fetch = window.IndexOf("ConsoleWait.WithWait(\"fetch\"", StringComparison.Ordinal);
+    int merge = window.IndexOf("ConsoleWait.WithWait(\"fast-forward\"", StringComparison.Ordinal);
+    int dryClone = window.IndexOf("if (DryRun && !alwaysPull) { Info($\"would clone {fullName} -> {preferred}\"); return null; }", StringComparison.Ordinal);
+    int offline = window.IndexOf("if (frc != 0) { Warn(\"git fetch failed (offline?) - using local copy\"); return dir; }", StringComparison.Ordinal);
+    int dirty = window.IndexOf("if (cur != branch || dirtyNow)", StringComparison.Ordinal);
+    int dryMerge = window.IndexOf("if (!alwaysPull) { Info($\"{behind} commit(s) behind origin/{branch}; dry run - not fast-forwarding.\"); return dir; }", StringComparison.Ordinal);
+    Assert(dryClone >= 0 && dryClone < clone, "dry-run clone guard must precede the wait");
+    Assert(offline > fetch && offline < merge, "failed fetch must keep using the local clone");
+    Assert(dirty > fetch && dirty < dryMerge && window[dirty..dryMerge].Contains("return dir;", StringComparison.Ordinal),
+        "dirty or wrong-branch clones must return before merge");
+    Assert(dryMerge > fetch && dryMerge < merge, "dry-run must return before merge");
+    Assert(window.Contains("has uncommitted changes: using it and skipping pull", StringComparison.Ordinal),
+        "dirty clone warning must remain");
+    Assert(window.Contains("Check(rc == 0, $\"cloned {fullName}\")", StringComparison.Ordinal)
+        && window.Contains("Check(mrc == 0 && after == remote,", StringComparison.Ordinal),
+        "final clone and fast-forward checks must remain outside the waits");
 }
 
 static void TestFr619HoursFetchTtyDone()
