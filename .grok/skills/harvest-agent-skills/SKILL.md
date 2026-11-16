@@ -209,7 +209,9 @@ books use `harvest-agent-skills` pointing at their home.)
 - MSI CLI chooser is a WiX fragment: four radio values grok/cursor/opencode/none, default none, InstallChosenCli only when UILevel > 3 and not none; msiexec /qn never shows the dialog or runs the CLI action.
 - CI Priority Agent CLI tests use in-memory fake installers; a guard fails any test line that irm/IWR/curl-calls x.ai, cursor.com/install, or opencode.ai.
 - Priority-generic customer-setup skill belongs in priority-mcp (FR #4970); verify catalog/.grok byte mirror and password-file pointer rules before PASS.
-- FORMCLTRIGTEXT lives in system dictionary DB, not company DB
+- FORMCLTRIGTEXT and the other form-trigger dictionary tables (FORMTRIGTEXT, FORMCLTRIG, FORMCLMNS, TRIGGERS, INCTRIG, EXECA, EXECPREPLOCK) live in the SQL database named system, not the company database. Company databases may have EXECTEXT only. Probe system.dbo first before concluding triggers are missing.
+- FORMCLTRIGTEXT columns are FORM, NAME, TRIG, TEXT, TEXTLINE, TEXTORD, INCFORM. POST-FIELD is TRIG=11. Other custom triggers use other TRIG ids joined to TRIGGERS.TRIGNAME. After the edit, Form Prep the ENAME (priority-form-prep-after-sql-change).
+- Airc remote sqlcmd: keep each PRIVMSG under about 400 characters. If PUT to airc\drop times out, fall back to one-line INSERTs. Do not put SQL passwords in airc or IRC payloads; use trusted auth when the console identity is sysadmin. Named-pipe or shared-memory SQL may have no TCP 1433.
 - After GitHub repo rename, MRB assign may keep the old owner/repo id while Closes and intake use the new name; DONE/ACK keep the exact assign id; leftovers of the old leaf are OK only as documented launcher/folder/origin aliases gated by a rename test.
 - WinPS 5.1 Join-Path takes only 2 args: nest Join-Path when syncing .grok skills to mcp-catalog mirrors, or catalog mirrors stay stale and mirror pin gates FAIL
 - catalog home training explainer section: place What the agent has been trained on above Skills; Medatech playbooks; allowlisted local execute; host never compiles forms or sees SQL; pin via training-explainer.mjs node:test
