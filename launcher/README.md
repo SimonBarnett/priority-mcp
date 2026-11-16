@@ -5,7 +5,7 @@ with the right context.
 
 ## Interactive console UX
 
-**PickList (Up/Down/Enter).** On a TTY, `ConsolePick.PickList` highlights a row. Up and Down move the highlight. Enter selects it. Esc cancels (returns null). The customer menu rows are General, then customer names, then New (New still Ask Haitch). The project / service-call menu uses the same picker. The CLI menu remains a later FR. `/airc` (FR #635) uses the same PickList for connected airc hosts.
+**PickList (Up/Down/Enter).** On a cursor-capable console, `ConsolePick.PickList` draws the menu once. Up/Down (wrapping) and Home/End update only the old and new selected rows in place; selection has a coloured background and a `>` marker. Enter selects it; Esc cancels (returns null). Both leave the cursor below the menu. Redirected input/output, unsupported terminals, or menus too tall for the window use a single numbered list and line input instead. The customer menu rows are General, then customer names, then New (New still Ask Haitch). The project / service-call menu uses the same picker. The CLI menu remains a later FR. `/airc` (FR #635) uses the same PickList for connected airc hosts.
 
 Non-interactive flags are unchanged: `--customer`, `--general`, and `--project` skip the picker. With stdin redirected, a numeric line still picks (1 = General, 2 = first customer). Do not print the picker on `--mcp-catalog` JSON-RPC stdout.
 

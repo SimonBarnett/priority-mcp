@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace PriorityAgent;
 
 /// <summary>
@@ -14,6 +16,9 @@ public interface IConsolePickIO
     void WriteLine(string value);
     string? ReadLine();
     ConsoleKeyInfo ReadKey(bool intercept);
+    bool TryBeginMenu(int lineCount, out int top, out int width);
+    void SetCursorPosition(int left, int top);
+    void WriteRow(string value, bool highlighted);
 }
 
 /// <summary>Default console adapter for live TTY / redirected stdin.</summary>
@@ -24,14 +29,69 @@ public sealed class SystemConsolePickIO : IConsolePickIO
     public void WriteLine(string value) => Console.WriteLine(value);
     public string? ReadLine() => Console.ReadLine();
     public ConsoleKeyInfo ReadKey(bool intercept) => Console.ReadKey(intercept);
+
+    public bool TryBeginMenu(int lineCount, out int top, out int width)
+    {
+        top = width = 0;
+        if (Console.IsInputRedirected || Console.IsOutputRedirected ||
+            (!OperatingSystem.IsWindows() &&
+             string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TERM"))) ||
+            Environment.GetEnvironmentVariable("TERM") == "dumb")
+            return false;
+        try
+        {
+            width = Console.WindowWidth;
+            if (width < 8 || lineCount >= Console.WindowHeight)
+                return false;
+            var position = Console.GetCursorPosition();
+            Console.SetCursorPosition(position.Left, position.Top);
+            // Reserve the entire block before drawing so navigation never scrolls at the bottom.
+            for (int i = 0; i < lineCount; i++)
+                Console.WriteLine();
+            top = Console.CursorTop - lineCount;
+            Console.SetCursorPosition(0, top);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or PlatformNotSupportedException or ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+    }
+
+    public void SetCursorPosition(int left, int top) => Console.SetCursorPosition(left, top);
+
+    public void WriteRow(string value, bool highlighted)
+    {
+        if (!highlighted)
+        {
+            Console.Write(value);
+            return;
+        }
+        var foreground = Console.ForegroundColor;
+        var background = Console.BackgroundColor;
+        try
+        {
+            Console.BackgroundColor = ConsoleColor.DarkCyan;
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write(value);
+        }
+        finally
+        {
+            Console.ResetColor();
+            if ((int)foreground >= 0)
+                Console.ForegroundColor = foreground;
+            if ((int)background >= 0)
+                Console.BackgroundColor = background;
+        }
+    }
 }
 
 public static class ConsolePick
 {
     /// <summary>
     /// Pick one item. Returns 0-based index, or null on Esc / cancel / invalid redirected input.
-    /// TTY: Up/Down moves highlight; Enter confirms; Esc cancels.
-    /// Redirected: prints numbered list and reads a 1-based index line (same spirit as Ask/ReadLine).
+    /// TTY: Up/Down/Home/End moves highlight in place; Enter confirms; Esc cancels.
+    /// Without cursor positioning: prints numbered list and reads a 1-based index line.
     /// </summary>
     public static int? PickList(
         IReadOnlyList<string> items,
@@ -43,29 +103,47 @@ public static class ConsolePick
             throw new ArgumentException("PickList requires at least one item.", nameof(items));
 
         io ??= new SystemConsolePickIO();
-        if (io.IsInputRedirected)
+        if (io.IsInputRedirected || !io.TryBeginMenu(items.Count + 1, out int top, out int width))
             return PickRedirected(items, prompt, io);
 
         int index = Math.Clamp(initialIndex, 0, items.Count - 1);
-        io.WriteLine(prompt);
-        Draw(items, index, io);
-        while (true)
+        try
         {
-            ConsoleKeyInfo key = io.ReadKey(intercept: true);
-            if (key.Key == ConsoleKey.Escape)
-                return null;
-            if (key.Key == ConsoleKey.Enter)
-                return index;
-            if (key.Key == ConsoleKey.UpArrow)
+            io.WriteRow(FitRow(prompt, width), false);
+            for (int i = 0; i < items.Count; i++)
+                DrawRow(i, i == index);
+            while (true)
             {
-                index = (index - 1 + items.Count) % items.Count;
-                Redraw(items, index, io);
+                ConsoleKeyInfo key = io.ReadKey(intercept: true);
+                if (key.Key == ConsoleKey.Escape)
+                    return null;
+                if (key.Key == ConsoleKey.Enter)
+                    return index;
+                int next = key.Key switch
+                {
+                    ConsoleKey.UpArrow => (index - 1 + items.Count) % items.Count,
+                    ConsoleKey.DownArrow => (index + 1) % items.Count,
+                    ConsoleKey.Home => 0,
+                    ConsoleKey.End => items.Count - 1,
+                    _ => index,
+                };
+                if (next != index)
+                {
+                    DrawRow(index, false);
+                    DrawRow(next, true);
+                    index = next;
+                }
             }
-            else if (key.Key == ConsoleKey.DownArrow)
-            {
-                index = (index + 1) % items.Count;
-                Redraw(items, index, io);
-            }
+        }
+        finally
+        {
+            io.SetCursorPosition(0, top + items.Count + 1);
+        }
+
+        void DrawRow(int row, bool highlighted)
+        {
+            io.SetCursorPosition(0, top + row + 1);
+            io.WriteRow(FitRow(FormatRow(row, items[row], highlighted), width), highlighted);
         }
     }
 
@@ -85,17 +163,20 @@ public static class ConsolePick
         return oneBased - 1;
     }
 
-    static void Draw(IReadOnlyList<string> items, int index, IConsolePickIO io)
+    static string FitRow(string value, int width)
     {
-        for (int i = 0; i < items.Count; i++)
-            io.WriteLine(FormatRow(i, items[i], i == index));
-    }
-
-    static void Redraw(IReadOnlyList<string> items, int index, IConsolePickIO io)
-    {
-        // Re-print the block (portable for tests / hosts without cursor APIs).
-        io.WriteLine($"--- ({index + 1}/{items.Count}) ---");
-        Draw(items, index, io);
+        var row = new StringBuilder();
+        int columns = 0;
+        foreach (var rune in value.EnumerateRunes())
+        {
+            // Conservatively budget two cells for non-ASCII and leave the last column unused.
+            int cells = rune.IsAscii || Rune.IsControl(rune) ? 1 : 2;
+            if (columns + cells >= width)
+                break;
+            row.Append(Rune.IsControl(rune) ? " " : rune.ToString());
+            columns += cells;
+        }
+        return row.ToString();
     }
 
     internal static string FormatRow(int zeroBased, string label, bool highlighted) =>
