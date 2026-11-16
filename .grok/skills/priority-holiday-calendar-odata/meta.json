@@ -1,0 +1,6 @@
+{
+  "name": "priority-holiday-calendar-odata",
+  "title": "Priority holiday request and calendar via OData",
+  "description": "Find the Medatech holiday-request and Priority calendar forms in the OData service document, copy existing rows if the API allows, and never confuse TRANSORDER_q hours with a holiday request. Documents the 400 API-cannot-be-run gap and generic leave/appointment hours codes.",
+  "version": "1.0.0"
+}

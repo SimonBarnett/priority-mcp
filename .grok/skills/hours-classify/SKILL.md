@@ -40,7 +40,11 @@ Repo path and URL, ticket, meeting/thread, customer cues.
    is not an authoritative `SC`/`SO` id, leave the entry unclassified.
    Do not hard-code the map in agents.
 4. When a `project.md` was missing or wrong, flag `hours-repo-metadata`.
-5. When still unsure, leave booking/WBS blank and write `unclassified because...`
+5. For leave, sickness, or medical-appointment **hours** (not a holiday request
+   or Priority calendar entry), see catalog skill `priority-holiday-calendar-odata`
+   and the leave rows in `docs/skill-sources/hours/wbs-fallback-map.md`. If two
+   codes could apply, list them; **Never guess.**
+6. When still unsure, leave booking/WBS blank and write `unclassified because...`
    on the entry. **Never guess.**
 
 ## Done
