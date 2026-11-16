@@ -229,3 +229,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - When a session-host FR conflicts with the picker that landed on main, compile both source files in the test project.
 - In top-level C# test Program.cs projects, put helper types (e.g. ScriptedPickIO) in their own .cs file --- a class among top-level statements hits CS8803
 - A FIX offer for an MRB-FAIL tip with a stacked fix PR pushes that commit onto the assigned branch and closes the companion.
+- A launcher menu redraw MRB passes when the fake console shows one initial draw and exactly two row writes per arrow, plus a numbered fallback. Do not require a live MarchHare session when that contract is tested.
