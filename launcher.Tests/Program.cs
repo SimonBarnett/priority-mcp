@@ -60,9 +60,14 @@ var checks = new List<(string Name, Action Run)>
     ("FR-609: redirected stdin 1 selects index 0", TestFr609PickListRedirectedOne),
     ("FR-609: redirected stdin 2 selects index 1", TestFr609PickListRedirectedTwo),
     ("FR-609: Esc cancels with null", TestFr609PickListEscCancels),
+    ("FR-661: navigation redraws only the two changed rows with highlight", TestFr661PickListInPlace),
+    ("FR-661: unsupported or redirected consoles use one numbered list", TestFr661PickListFallback),
+    ("FR-661: unchanged selection does not redraw; long rows cannot wrap", TestFr661PickListNoOpAndWidth),
     ("FR-613: wait spinner preview has >=2 distinct glyphs", TestFr613WaitSpinnerGlyphs),
     ("FR-613: redirected / Quiet WithWait writes nothing", TestFr613WaitQuietNoWrites),
     ("FR-613: Program sets Quiet before --mcp-catalog serve", TestFr613McpCatalogSetsQuiet),
+    ("FR-614: EnsureClone wraps clone, fetch and ff-only merge waits", TestFr614CloneWaitsWired),
+    ("FR-614: EnsureClone preserves dirty, offline and dry-run guards", TestFr614CloneGuardsPreserved),
     ("FR-619: hours fetch TTY spinner settles done on success", TestFr619HoursFetchTtyDone),
     ("FR-619: hours fetch failure keeps detail and does not print done", TestFr619HoursFetchFailNoDone),
     ("FR-619: hours fetch source wraps the GET; relaunch SKIP stays", TestFr619HoursFetchWired),
@@ -989,6 +994,90 @@ static void TestFr609PickListEscCancels()
         keys: new[] { new ConsoleKeyInfo('\0', ConsoleKey.Escape, false, false, false) });
     int? picked = ConsolePick.PickList(items, "Pick one:", io);
     Assert(picked is null, "Esc must cancel with null");
+    Assert(io.CursorMoves[^1] == (0, io.MenuTop + items.Length + 1), "Esc must leave cursor below menu");
+}
+
+static void TestFr661PickListInPlace()
+{
+    var items = new[] { "alpha", "bravo", "charlie", "delta" };
+    var keys = new[]
+    {
+        ConsoleKey.DownArrow, ConsoleKey.DownArrow, ConsoleKey.UpArrow, ConsoleKey.UpArrow,
+        ConsoleKey.UpArrow, ConsoleKey.DownArrow, ConsoleKey.End, ConsoleKey.Home,
+        ConsoleKey.DownArrow, ConsoleKey.UpArrow, ConsoleKey.Enter,
+    };
+    var io = new ScriptedPickIO(false,
+        keys: keys.Select(k => new ConsoleKeyInfo('\0', k, false, false, false)).ToArray());
+    Assert(ConsolePick.PickList(items, "Pick one:", io) == 0, "navigation result");
+    Assert(io.Rows.Count == 1 + items.Length + 2 * (keys.Length - 1), "draw once then two rows per move");
+    Assert(io.Rows[0].Text == "Pick one:" && !io.Rows[0].Highlighted, "prompt once, not highlighted");
+    for (int i = 0; i < items.Length; i++)
+    {
+        var row = io.Rows[i + 1];
+        Assert(row.Top == io.MenuTop + i + 1 && row.Text.Contains(items[i]), "initial list drawn in order");
+        Assert(row.Highlighted == (i == 0), "only initial selection highlighted");
+    }
+    int[] selections = { 1, 2, 1, 0, 3, 0, 3, 0, 1, 0 };
+    int previous = 0;
+    for (int move = 0; move < selections.Length; move++)
+    {
+        int start = 1 + items.Length + 2 * move;
+        var oldRow = io.Rows[start];
+        var newRow = io.Rows[start + 1];
+        Assert(!oldRow.Highlighted && oldRow.Top == io.MenuTop + previous + 1 &&
+            oldRow.Text == ConsolePick.FormatRow(previous, items[previous], false), "clear only old selection");
+        int next = selections[move];
+        Assert(newRow.Highlighted && newRow.Top == io.MenuTop + next + 1 &&
+            newRow.Text == ConsolePick.FormatRow(next, items[next], true), "highlight only new selection with marker");
+        Assert(io.RowCountsAtRead[move + 1] - io.RowCountsAtRead[move] == 2, "each key writes exactly two rows");
+        previous = next;
+    }
+    Assert(io.Writes.Count(w => w == "Pick one:") == 1 &&
+        !io.Writes.Any(w => w.Contains("--- (")), "no repeated prompt or selection headers");
+    Assert(io.CursorMoves.All(p => p.Left == 0 && p.Top >= io.MenuTop &&
+        p.Top <= io.MenuTop + items.Length + 1), "all writes stay in reserved block");
+    Assert(io.CursorMoves[^1] == (0, io.MenuTop + items.Length + 1), "Enter leaves cursor below menu");
+}
+
+static void TestFr661PickListFallback()
+{
+    foreach (var (redirected, cursorCapable) in new[] { (true, true), (true, false), (false, false) })
+    {
+        var io = new ScriptedPickIO(redirected, lines: new[] { "2" }) { CanPositionCursor = cursorCapable };
+        Assert(ConsolePick.PickList(new[] { "alpha", "bravo" }, "Pick one:", io) == 1, "numbered fallback result");
+        Assert(io.Writes.SequenceEqual(new[] { "Pick one:\n", "   1. alpha\n", "   2. bravo\n", "Pick [1-2]: " }),
+            "fallback prints the numbered list exactly once");
+        Assert(io.Rows.Count == 0 && io.CursorMoves.Count == 0 && io.RowCountsAtRead.Count == 0,
+            "fallback uses no cursor, attributes, or keypress reads");
+    }
+    foreach (string input in new[] { "", "0", "3", "no", "999999999999999999" })
+    {
+        var io = new ScriptedPickIO(false, lines: new[] { input }) { CanPositionCursor = false };
+        Assert(ConsolePick.PickList(new[] { "alpha", "bravo" }, "Pick one:", io) is null, "invalid input cancels");
+    }
+}
+
+static void TestFr661PickListNoOpAndWidth()
+{
+    var keys = new[] { ConsoleKey.Home, ConsoleKey.End, ConsoleKey.UpArrow, ConsoleKey.DownArrow, ConsoleKey.A, ConsoleKey.Enter };
+    foreach (int initialIndex in new[] { -5, 0, 5 })
+    {
+        var io = new ScriptedPickIO(false,
+            keys: keys.Select(k => new ConsoleKeyInfo('\0', k, false, false, false)).ToArray()) { Width = 12 };
+        Assert(ConsolePick.PickList(new[] { "long\tlabel\ncannot wrap" }, "Long prompt cannot wrap", io, initialIndex) == 0,
+            "single item stays selected and initial index is clamped");
+        Assert(io.Rows.Count == 2 && io.Rows[1].Highlighted, "no redraw when selection is unchanged");
+        Assert(io.Rows.All(r => r.Text.Length < io.Width && !r.Text.Any(char.IsControl)), "rows fit without control characters");
+    }
+    foreach (string label in new[] { "客户项目甲", "😀😀😀😀" })
+    {
+        var io = new ScriptedPickIO(false,
+            keys: new[] { new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false) }) { Width = 12 };
+        ConsolePick.PickList(new[] { label }, "Pick:", io);
+        Assert(io.Rows[1].Text.EnumerateRunes().Sum(r => r.IsAscii ? 1 : 2) < io.Width,
+            "wide characters must fit in console cells");
+        Assert(!io.Rows[1].Text.Contains('\uFFFD'), "clipping must not split surrogate pairs");
+    }
 }
 
 static void TestFr613WaitSpinnerGlyphs()
@@ -1017,6 +1106,45 @@ static void TestFr613WaitQuietNoWrites()
         Assert(tty.Writes.Count == 0, "Quiet must not write spinner (MCP stdout)");
     }
     finally { ConsoleWait.Quiet = prev; }
+}
+
+static void TestFr614CloneWaitsWired()
+{
+    string src = ReadLauncherProgram();
+    int start = src.IndexOf("static string? EnsureClone(", StringComparison.Ordinal);
+    int end = src.IndexOf("static List<Customer> ListCustomers()", start, StringComparison.Ordinal);
+    string window = src[start..end];
+    Assert(window.Contains("ConsoleWait.WithWait(\"clone\", () => RunTo(Gh, CloneRoot, \"repo\", \"clone\", fullName, preferred))", StringComparison.Ordinal),
+        "clone must execute inside WithWait");
+    Assert(window.Contains("ConsoleWait.WithWait(\"fetch\", () => RunTo(Git, dir, \"fetch\", \"--prune\", \"--quiet\", \"origin\"))", StringComparison.Ordinal),
+        "fetch must execute inside WithWait with existing flags");
+    Assert(window.Contains("ConsoleWait.WithWait(\"fast-forward\", () => RunTo(Git, dir, \"merge\", \"--ff-only\", \"--quiet\", $\"origin/{branch}\"))", StringComparison.Ordinal),
+        "merge must execute inside WithWait and remain ff-only");
+}
+
+static void TestFr614CloneGuardsPreserved()
+{
+    string src = ReadLauncherProgram();
+    int start = src.IndexOf("static string? EnsureClone(", StringComparison.Ordinal);
+    int end = src.IndexOf("static List<Customer> ListCustomers()", start, StringComparison.Ordinal);
+    string window = src[start..end];
+    int clone = window.IndexOf("ConsoleWait.WithWait(\"clone\"", StringComparison.Ordinal);
+    int fetch = window.IndexOf("ConsoleWait.WithWait(\"fetch\"", StringComparison.Ordinal);
+    int merge = window.IndexOf("ConsoleWait.WithWait(\"fast-forward\"", StringComparison.Ordinal);
+    int dryClone = window.IndexOf("if (DryRun && !alwaysPull) { Info($\"would clone {fullName} -> {preferred}\"); return null; }", StringComparison.Ordinal);
+    int offline = window.IndexOf("if (frc != 0) { Warn(\"git fetch failed (offline?) - using local copy\"); return dir; }", StringComparison.Ordinal);
+    int dirty = window.IndexOf("if (cur != branch || dirtyNow)", StringComparison.Ordinal);
+    int dryMerge = window.IndexOf("if (!alwaysPull) { Info($\"{behind} commit(s) behind origin/{branch}; dry run - not fast-forwarding.\"); return dir; }", StringComparison.Ordinal);
+    Assert(dryClone >= 0 && dryClone < clone, "dry-run clone guard must precede the wait");
+    Assert(offline > fetch && offline < merge, "failed fetch must keep using the local clone");
+    Assert(dirty > fetch && dirty < dryMerge && window[dirty..dryMerge].Contains("return dir;", StringComparison.Ordinal),
+        "dirty or wrong-branch clones must return before merge");
+    Assert(dryMerge > fetch && dryMerge < merge, "dry-run must return before merge");
+    Assert(window.Contains("has uncommitted changes: using it and skipping pull", StringComparison.Ordinal),
+        "dirty clone warning must remain");
+    Assert(window.Contains("Check(rc == 0, $\"cloned {fullName}\")", StringComparison.Ordinal)
+        && window.Contains("Check(mrc == 0 && after == remote,", StringComparison.Ordinal),
+        "final clone and fast-forward checks must remain outside the waits");
 }
 
 static void TestFr619HoursFetchTtyDone()

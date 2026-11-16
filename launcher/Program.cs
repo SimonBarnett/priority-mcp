@@ -804,7 +804,7 @@ static class Program
                 if (DryRun && !alwaysPull) { Info($"would clone {fullName} -> {preferred}"); return null; }
                 Info($"cloning {fullName} -> {preferred}");
                 Directory.CreateDirectory(CloneRoot);
-                int rc = RunTo(Gh, CloneRoot, "repo", "clone", fullName, preferred);
+                int rc = ConsoleWait.WithWait("clone", () => RunTo(Gh, CloneRoot, "repo", "clone", fullName, preferred));
                 Check(rc == 0, $"cloned {fullName}");
                 return rc == 0 ? preferred : null;
             }
@@ -816,7 +816,7 @@ static class Program
         Info($"clone: {dir}");
         string before = GitOut(dir, "rev-parse", "--short", "HEAD");
         string cur = GitOut(dir, "rev-parse", "--abbrev-ref", "HEAD");
-        int frc = RunTo(Git, dir, "fetch", "--prune", "--quiet", "origin");
+        int frc = ConsoleWait.WithWait("fetch", () => RunTo(Git, dir, "fetch", "--prune", "--quiet", "origin"));
         if (frc != 0) { Warn("git fetch failed (offline?) - using local copy"); return dir; }
         string behind = GitOut(dir, "rev-list", "--count", $"HEAD..origin/{branch}");
         bool dirtyNow = GitOut(dir, "status", "--porcelain").Length > 0;
@@ -826,7 +826,7 @@ static class Program
             return dir;
         }
         if (!alwaysPull) { Info($"{behind} commit(s) behind origin/{branch}; dry run - not fast-forwarding."); return dir; }
-        int mrc = RunTo(Git, dir, "merge", "--ff-only", "--quiet", $"origin/{branch}");
+        int mrc = ConsoleWait.WithWait("fast-forward", () => RunTo(Git, dir, "merge", "--ff-only", "--quiet", $"origin/{branch}"));
         string after = GitOut(dir, "rev-parse", "--short", "HEAD");
         string remote = GitOut(dir, "rev-parse", "--short", $"origin/{branch}");
         Check(mrc == 0 && after == remote, $"fast-forward {name}: {before} -> {after} (origin/{branch} {remote}, was {behind} behind)");
