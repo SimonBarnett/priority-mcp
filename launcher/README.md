@@ -92,7 +92,9 @@ PriorityAgent.exe --uninstall
    from `launcher/customer-setup`. A project folder must already be an authoritative `SCxxxxxx` or `SOxxxxxx`.
    The Medatech booking id and WBS go in that folder's `project.md`, not in the folder name.
 7. It checks fuel like `ce-dayworks/scripts/Start-DayWorks.ps1`.
-   - Source: the Bob report `machines.<machine>.pcent["grok-chat"]`.
+   - Source: the Bob report `machines.<machine>.pcent["grok-build"]` (xAI weekly
+     remaining), then `machines.<machine>.weekly`, then legacy `pcent["grok-chat"]`
+     (Cursor Sand). Hosts without Cursor often publish only `grok-build` (FR #677).
    - Above 0 means the pool is used. 0 or unknown gives a warning and asks before continuing.
    - It never handles keys.
 8. It **starts the chosen agent CLI** in the same console (issue #569 / FR #570 / FR-005):

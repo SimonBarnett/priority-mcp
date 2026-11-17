@@ -1051,6 +1051,7 @@ static class Program
     static void FuelCheck()
     {
         // FR #616: spinner on the blocking fuel report GET. Continue-anyway prompt stays outside WithWait.
+        // FR #677: read pcent.grok-build / weekly (xAI remaining); grok-chat is Cursor Sand only.
         var fetched = FuelReportFetch.Run(FetchFuelReportOnce);
         if (fetched.Ok)
         {
@@ -1058,14 +1059,17 @@ static class Program
             {
                 using var doc = JsonDocument.Parse(fetched.Json);
                 string m = Environment.MachineName.ToLowerInvariant();
-                if (doc.RootElement.TryGetProperty("machines", out var ms) && ms.TryGetProperty(m, out var me)
-                    && me.TryGetProperty("pcent", out var pc) && pc.TryGetProperty("grok-chat", out var g) && g.ValueKind == JsonValueKind.Number)
+                if (FuelMeter.TryGetMachine(doc.RootElement, m, out var me)
+                    && FuelMeter.TryRead(me, out var reading))
                 {
-                    double v = g.GetDouble();
-                    if (v > 0) { Check(true, $"fuel: grok-chat {v}% on {m} -> pool"); return; }
-                    Warn($"fuel: grok-chat is 0% on {m} (pool empty). Grok may need a session key; the launcher never handles keys.");
+                    if (reading.Percent > 0)
+                    {
+                        Check(true, $"fuel: {reading.Key} {reading.Percent}% on {m} -> pool");
+                        return;
+                    }
+                    Warn($"fuel: {reading.Key} is 0% on {m} (pool empty). Grok may need a session key; the launcher never handles keys.");
                 }
-                else Warn($"fuel: no grok-chat figure for {m} in the Bob report (unknown).");
+                else Warn($"fuel: no grok-build/weekly figure for {m} in the Bob report (unknown).");
             }
             catch (Exception ex) { Warn("fuel: Bob report unavailable (" + ex.Message + ")"); }
         }
