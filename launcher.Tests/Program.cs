@@ -81,6 +81,11 @@ var checks = new List<(string Name, Action Run)>
     ("FR-616: fuel report TTY spinner settles done on success", TestFr616FuelReportTtyDone),
     ("FR-616: fuel report failure keeps detail and does not print done", TestFr616FuelReportFailNoDone),
     ("FR-616: fuel report source wraps GET; --no-fuel-check and Continue stay", TestFr616FuelReportWired),
+    ("FR-677: pcent.grok-build 81% is fuel (flamingo-shaped)", TestFr677GrokBuildPreferred),
+    ("FR-677: weekly fallback when pcent has no grok-build", TestFr677WeeklyFallback),
+    ("FR-677: legacy grok-chat still reads when no grok-build", TestFr677LegacyGrokChat),
+    ("FR-677: missing machine / missing figures is unknown", TestFr677UnknownWhenMissing),
+    ("FR-677: FuelCheck uses FuelMeter not grok-chat-only", TestFr677FuelCheckWired),
     ("MRB-633 hostile: WithWait on throw clears line and does not print done", TestMrb633WaitThrowNoDone),
     ("MRB-633 hostile: WithWait TTY emits glyphs then settle done", TestMrb633WaitTtyGlyphsAndSettle),
     ("FR-611: project PickList Down Enter selects first folder", TestFr611ProjectPickListFirstFolder),
@@ -1433,6 +1438,72 @@ static void TestFr616FuelReportWired()
     Assert(src.Contains("case \"--no-fuel-check\"", StringComparison.Ordinal), "--no-fuel-check stays");
     Assert(src.Contains("Continue anyway?", StringComparison.Ordinal), "Continue anyway prompt stays");
     Assert(src.Contains("if (!NoFuel) FuelCheck()", StringComparison.Ordinal), "--no-fuel-check skips FuelCheck");
+}
+
+static void TestFr677GrokBuildPreferred()
+{
+    // Live flamingo shape 2026-11-17: pcent has grok-build:81 only (no Cursor Sand grok-chat).
+    using var doc = JsonDocument.Parse(
+        """{"machines":{"flamingo":{"id":"flamingo","pcent":{"grok-build":81},"weekly":81}}}""");
+    Assert(FuelMeter.TryGetMachine(doc.RootElement, "flamingo", out var me), "machine flamingo");
+    Assert(FuelMeter.TryRead(me, out var reading), "must read fuel");
+    Assert(reading.Key == FuelMeter.KeyGrokBuild && reading.Percent == 81,
+        $"expected grok-build 81, got {reading.Key} {reading.Percent}");
+    // Prefer grok-build over a stale grok-chat if both exist.
+    using var both = JsonDocument.Parse(
+        """{"pcent":{"grok-build":81,"grok-chat":0},"weekly":81}""");
+    Assert(FuelMeter.TryRead(both.RootElement, out var prefer), "both keys");
+    Assert(prefer.Key == FuelMeter.KeyGrokBuild && prefer.Percent == 81, "grok-build wins over grok-chat");
+}
+
+static void TestFr677WeeklyFallback()
+{
+    using var doc = JsonDocument.Parse("""{"weekly":42,"pcent":{}}""");
+    Assert(FuelMeter.TryRead(doc.RootElement, out var reading), "weekly fallback");
+    Assert(reading.Key == FuelMeter.KeyWeekly && reading.Percent == 42, "weekly 42");
+}
+
+static void TestFr677LegacyGrokChat()
+{
+    using var doc = JsonDocument.Parse("""{"pcent":{"grok-chat":55}}""");
+    Assert(FuelMeter.TryRead(doc.RootElement, out var reading), "legacy grok-chat");
+    Assert(reading.Key == FuelMeter.KeyGrokChatLegacy && reading.Percent == 55, "grok-chat 55");
+}
+
+static void TestFr677UnknownWhenMissing()
+{
+    using var empty = JsonDocument.Parse("""{"machines":{"flamingo":{"pcent":{}}}}""");
+    Assert(FuelMeter.TryGetMachine(empty.RootElement, "FLAMINGO", out var me), "case-insensitive machine");
+    Assert(!FuelMeter.TryRead(me, out _), "empty pcent is unknown");
+    using var none = JsonDocument.Parse("""{"machines":{}}""");
+    Assert(!FuelMeter.TryGetMachine(none.RootElement, "flamingo", out _), "missing machine");
+}
+
+static void TestFr677FuelCheckWired()
+{
+    string src = ReadLauncherProgram();
+    Assert(src.Contains("FuelMeter.TryRead", StringComparison.Ordinal), "FuelCheck must use FuelMeter.TryRead");
+    Assert(src.Contains("FuelMeter.TryGetMachine", StringComparison.Ordinal), "FuelCheck must use FuelMeter.TryGetMachine");
+    Assert(src.Contains("grok-build", StringComparison.Ordinal), "FuelCheck/docs path must name grok-build");
+    // Must not be the old grok-chat-only gate.
+    Assert(!src.Contains("pc.TryGetProperty(\"grok-chat\"", StringComparison.Ordinal),
+        "FuelCheck must not read grok-chat alone");
+    string readme = File.ReadAllText(Path.Combine(
+        Path.GetDirectoryName(ReadLauncherProgramPath())!, "README.md"));
+    Assert(readme.Contains("grok-build", StringComparison.Ordinal), "README must document grok-build");
+}
+
+static string ReadLauncherProgramPath()
+{
+    string[] candidates =
+    {
+        Path.GetFullPath(Path.Combine("..", "launcher", "Program.cs")),
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher", "Program.cs")),
+        Path.GetFullPath("launcher/Program.cs"),
+    };
+    string? path = candidates.FirstOrDefault(File.Exists);
+    Assert(path is not null, "launcher/Program.cs not found");
+    return path!;
 }
 
 static void TestFr613McpCatalogSetsQuiet()
