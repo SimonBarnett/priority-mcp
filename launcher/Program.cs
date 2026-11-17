@@ -71,9 +71,25 @@ static class Program
 
         // FR #668: shipped bare-exe path creates/removes the per-user Desktop shortcut.
         if (args.Length > 0 && args[0].Equals("--install", StringComparison.OrdinalIgnoreCase))
+        {
+            if (args.Length != 1)
+            {
+                Err("--install must be the only argument (FR #668).");
+                Help();
+                return 2;
+            }
             return RunDesktopInstall();
+        }
         if (args.Length > 0 && args[0].Equals("--uninstall", StringComparison.OrdinalIgnoreCase))
+        {
+            if (args.Length != 1)
+            {
+                Err("--uninstall must be the only argument (FR #668).");
+                Help();
+                return 2;
+            }
             return RunDesktopUninstall();
+        }
 
         // MCP stdio server mode: stdout carries JSON-RPC only - nothing else may print.
         int mi = Array.FindIndex(args, a => a.Equals("--mcp-catalog", StringComparison.OrdinalIgnoreCase));

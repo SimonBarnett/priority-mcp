@@ -1132,6 +1132,12 @@ static void TestFr668ReadmeDesktopShortcut()
         "README must name the Desktop shortcut");
     Assert(!readme.Contains(@"C:\Users\", StringComparison.OrdinalIgnoreCase),
         "README must not hard-code a user Desktop path");
+    string src = ReadLauncherProgram();
+    Assert(src.Contains("args.Length != 1", StringComparison.Ordinal)
+           && src.Contains("--install must be the only argument", StringComparison.Ordinal),
+        "early --install path must reject extra arguments");
+    Assert(src.Contains("--uninstall must be the only argument", StringComparison.Ordinal),
+        "early --uninstall path must reject extra arguments");
 }
 
 static void TestFr613WaitSpinnerGlyphs()
