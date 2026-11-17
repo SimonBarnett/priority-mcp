@@ -31,6 +31,7 @@
     <Compile Include="../launcher/AircSlashCommand.cs" Link="AircSlashCommand.cs" />
     <Compile Include="../launcher/AircSession.cs" Link="AircSession.cs" />
     <Compile Include="../launcher/SessionLoginMeta.cs" Link="SessionLoginMeta.cs" />
+    <Compile Include="../launcher/DesktopShortcut.cs" Link="DesktopShortcut.cs" />
     <None Include="fixtures/**/*" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../launcher/agent-rules.md" Link="fixtures/agent-rules.md" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../launcher/README.md" Link="fixtures/launcher-README.md" CopyToOutputDirectory="PreserveNewest" />

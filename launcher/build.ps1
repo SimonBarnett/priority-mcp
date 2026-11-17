@@ -1,5 +1,6 @@
 # Builds launcher\PriorityAgent.exe (self-contained, single-file, win-x64, Priority icon embedded)
-# Optional: -Install copies it to D:\tools\PriorityAgent and creates the 'Priority Agent' desktop shortcut.
+# Optional: -Install copies it to -Dest (default D:\tools\PriorityAgent) then runs PriorityAgent.exe --install
+# so the Desktop shortcut uses the same FR #668 path as a downloaded release.
 # Optional: -Version X.Y.Z (default 1.0.0) stamps FileVersion X.Y.Z.0 and InformationalVersion X.Y.Z+<sha>.
 param(
     [switch]$Install,
@@ -22,13 +23,9 @@ try {
     if ($Install) {
         New-Item -ItemType Directory -Force -Path $Dest | Out-Null
         Copy-Item out\PriorityAgent.exe, priority.ico -Destination $Dest -Force
-        $lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Priority Agent.lnk'
-        $sh = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
-        $sh.TargetPath = Join-Path $Dest 'PriorityAgent.exe'
-        $sh.WorkingDirectory = $Dest
-        $sh.IconLocation = (Join-Path $Dest 'PriorityAgent.exe') + ',0'
-        $sh.Description = 'Priority ERP coding agent (Grok) with priority-mcp skills'
-        $sh.Save()
-        Write-Host "Installed to $Dest; shortcut $lnk"
+        $exe = Join-Path $Dest 'PriorityAgent.exe'
+        & $exe --install
+        if ($LASTEXITCODE -ne 0) { throw "PriorityAgent.exe --install failed ($LASTEXITCODE)" }
+        Write-Host "Installed to $Dest (FR #668 desktop shortcut via --install)"
     }
 } finally { Pop-Location }

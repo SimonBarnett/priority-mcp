@@ -69,6 +69,28 @@ static class Program
         if (args.Length > 0 && args[0].Equals("/airc", StringComparison.OrdinalIgnoreCase))
             return AircSlashCommand.Run();
 
+        // FR #668: shipped bare-exe path creates/removes the per-user Desktop shortcut.
+        if (args.Length > 0 && args[0].Equals("--install", StringComparison.OrdinalIgnoreCase))
+        {
+            if (args.Length != 1)
+            {
+                Err("--install must be the only argument (FR #668).");
+                Help();
+                return 2;
+            }
+            return RunDesktopInstall();
+        }
+        if (args.Length > 0 && args[0].Equals("--uninstall", StringComparison.OrdinalIgnoreCase))
+        {
+            if (args.Length != 1)
+            {
+                Err("--uninstall must be the only argument (FR #668).");
+                Help();
+                return 2;
+            }
+            return RunDesktopUninstall();
+        }
+
         // MCP stdio server mode: stdout carries JSON-RPC only - nothing else may print.
         int mi = Array.FindIndex(args, a => a.Equals("--mcp-catalog", StringComparison.OrdinalIgnoreCase));
         if (mi >= 0)
@@ -93,6 +115,11 @@ static class Program
                 case "--root": CloneRootOverride = Next(); break;
                 case "--no-pause": NoPause = true; break;
                 case "--no-fuel-check": NoFuel = true; break;
+                case "--install":
+                case "--uninstall":
+                    Err($"{args[i]} must be the only argument (FR #668).");
+                    Help();
+                    return 2;
                 case "--airc":
                 case "--no-airc":
                     Err($"--airc / --no-airc {WcfSupport.RemovedAircMessage}");
@@ -1222,11 +1249,33 @@ static class Program
         try { File.AppendAllText(LogFile, $"{DateTime.Now:HH:mm:ss} {s}{Environment.NewLine}"); } catch { }
     }
 
+    static int RunDesktopInstall()
+    {
+        string exe = Environment.ProcessPath
+            ?? Path.Combine(AppContext.BaseDirectory, "PriorityAgent.exe");
+        var result = DesktopShortcut.Ensure(exe);
+        Console.WriteLine("Desktop shortcut: " + result.LinkPath);
+        Console.WriteLine("Target: " + result.TargetExe);
+        return 0;
+    }
+
+    static int RunDesktopUninstall()
+    {
+        string link = DesktopShortcut.LinkPath();
+        if (DesktopShortcut.Remove())
+            Console.WriteLine("Removed desktop shortcut: " + link);
+        else
+            Console.WriteLine("No desktop shortcut to remove (" + link + ")");
+        return 0;
+    }
+
     static void Help() => Console.WriteLine(@"
 PriorityAgent.exe [options]
 
   (no options)          interactive: pick customer/project, then MSI-style CLI chooser
   /airc                 PickList of airc hosts connected on IRC (records choice only; FR #635)
+  --install             create/update the per-user Desktop shortcut 'Priority Agent' (FR #668)
+  --uninstall           remove that Desktop shortcut (FR #668)
   --list                list customer repos (topic priority-customer); with --customer, also list its folders
   --general             general Priority context (no customer)
   --customer <repo>     pick customer non-interactively (e.g. rees)

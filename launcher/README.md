@@ -18,9 +18,28 @@ Call sites today: `ListCustomers` (gh api topic list, including `--list`), hours
 `PriorityAgent.exe /airc` shows a wait spinner, then lists airc hosts currently connected on IRC (live roster via bob digest `airc_console_details`: host, shop channel, and domain/workgroup when present). Esc cancels. No hosts → a clear message. Roster unreachable → a clear error that says to retry with `/airc`. Choosing a host only records the choice under `%LOCALAPPDATA%\PriorityAgent\airc-selection.json` (session use is FR #636). Offline tests can set `PRIORITY_AGENT_AIRC_DIGEST_JSON`. Never logs IRC passwords.
 
 A per-machine **MSI** is an extra asset next to the existing `PriorityAgent.exe` pre-release (the loose
-exe stays). The MSI installs to `C:\Program Files\Priority Agent`. An interactive install offers
-**Grok**, **Cursor**, **OpenCode**, or **Not now**. `msiexec /qn` completes without showing that prompt
-and does not download a CLI.
+exe stays). The MSI installs to `C:\Program Files\Priority Agent` and creates Start Menu and Desktop
+shortcuts named **Priority Agent**. An interactive install offers **Grok**, **Cursor**, **OpenCode**,
+or **Not now**. `msiexec /qn` completes without showing that prompt and does not download a CLI.
+
+### Desktop shortcut for the loose exe (FR #668)
+
+The shipped GitHub Release is the bare `PriorityAgent.exe` (no MSI required). After you place the exe
+somewhere durable (for example a tools folder), run:
+
+```
+PriorityAgent.exe --install
+```
+
+That creates or updates a **per-user** Desktop shortcut named `Priority Agent` that targets this exe
+(using the current user's Desktop folder from the OS — no machine-specific path is hard-coded). A
+second `--install` overwrites the same `.lnk` (idempotent; no duplicate shortcuts). Rollback:
+
+```
+PriorityAgent.exe --uninstall
+```
+
+`launcher\build.ps1 -Install` copies the build into `-Dest` and then runs the same `--install` path.
 
 ## What it does on every start
 
@@ -250,9 +269,10 @@ canary handling. The `Launcher release` workflow runs on launcher pull requests 
 it publishes a GitHub **pre-release** with `PriorityAgent.exe` and its `.sha256` file for `launcher-v*` tags or a
 manual dispatch from `main`. When an MSI is packed, it is an **additional asset** beside that loose exe
 pre-release; the exe is not replaced. A `launcher-vX.Y.Z` tag stamps banner / FileVersion `X.Y.Z` / `X.Y.Z.0` and
-ProductVersion `X.Y.Z+<commit>` (FR #267). Local `launcher\build.ps1 -Install` defaults to `1.0.0` unless you pass `-Version`. Download
-it from [GitHub Releases](https://github.com/SimonBarnett/priority-mcp/releases) and verify the checksum
-before use. Releases remain pre-release until separately approved.
+ProductVersion `X.Y.Z+<commit>` (FR #267). Local `launcher\build.ps1 -Install` defaults to `1.0.0` unless you pass `-Version`;
+it then runs `PriorityAgent.exe --install` for the Desktop shortcut (FR #668). Download
+it from [GitHub Releases](https://github.com/SimonBarnett/priority-mcp/releases), verify the checksum,
+place the exe, and run `PriorityAgent.exe --install` once. Releases remain pre-release until separately approved.
 
 ## Icon
 
