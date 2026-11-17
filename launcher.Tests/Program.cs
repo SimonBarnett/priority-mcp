@@ -63,6 +63,9 @@ var checks = new List<(string Name, Action Run)>
     ("FR-609: redirected stdin 1 selects index 0", TestFr609PickListRedirectedOne),
     ("FR-609: redirected stdin 2 selects index 1", TestFr609PickListRedirectedTwo),
     ("FR-609: Esc cancels with null", TestFr609PickListEscCancels),
+    ("FR-687: TTY PickList clears screen before prompt", TestFr687PickListClearsOnTty),
+    ("FR-687: redirected PickList does not clear", TestFr687PickListNoClearWhenRedirected),
+    ("FR-687: Ask clears on TTY; README documents clear between questions", TestFr687AskAndReadme),
     ("FR-661: navigation redraws only the two changed rows with highlight", TestFr661PickListInPlace),
     ("FR-661: unsupported or redirected consoles use one numbered list", TestFr661PickListFallback),
     ("FR-661: unchanged selection does not redraw; long rows cannot wrap", TestFr661PickListNoOpAndWidth),
@@ -1072,6 +1075,47 @@ static void TestFr609PickListEscCancels()
     int? picked = ConsolePick.PickList(items, "Pick one:", io);
     Assert(picked is null, "Esc must cancel with null");
     Assert(io.CursorMoves[^1] == (0, io.MenuTop + items.Length + 1), "Esc must leave cursor below menu");
+}
+
+static void TestFr687PickListClearsOnTty()
+{
+    // FR #687: interactive PickList clears once before drawing so prior answers do not scroll.
+    var items = new[] { "alpha", "bravo" };
+    var io = new ScriptedPickIO(
+        redirected: false,
+        keys: new[] { new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false) });
+    Assert(ConsolePick.PickList(items, "Pick one:", io) == 0, "Enter selects index 0");
+    Assert(io.ClearCount == 1, $"TTY PickList must ClearScreen once, got {io.ClearCount}");
+}
+
+static void TestFr687PickListNoClearWhenRedirected()
+{
+    var io = new ScriptedPickIO(redirected: true, lines: new[] { "1" });
+    Assert(ConsolePick.PickList(new[] { "alpha", "bravo" }, "Pick one:", io) == 0, "redirected pick");
+    Assert(io.ClearCount == 0, "redirected stdin must not ClearScreen");
+}
+
+static void TestFr687AskAndReadme()
+{
+    string src = ReadLauncherProgram();
+    int ask = src.IndexOf("static string Ask(string prompt)", StringComparison.Ordinal);
+    Assert(ask >= 0, "Ask helper missing");
+    string window = src.Substring(ask, Math.Min(600, src.Length - ask));
+    Assert(window.Contains("Console.Clear()", StringComparison.Ordinal),
+        "Ask must Console.Clear between questions on TTY");
+    Assert(window.Contains("IsInputRedirected", StringComparison.Ordinal)
+        && window.Contains("IsOutputRedirected", StringComparison.Ordinal),
+        "Ask clear must skip redirected stdin/stdout");
+
+    string pickSrc = File.ReadAllText(Path.Combine(Path.GetDirectoryName(FindLauncherProgramPath()!)!, "ConsolePick.cs"));
+    Assert(pickSrc.Contains("ClearScreen()", StringComparison.Ordinal)
+        && pickSrc.Contains("!io.IsInputRedirected", StringComparison.Ordinal),
+        "PickList must ClearScreen when not redirected");
+
+    string readme = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "fixtures", "launcher-README.md"));
+    Assert(readme.Contains("Clear between questions", StringComparison.OrdinalIgnoreCase)
+        || readme.Contains("FR #687", StringComparison.Ordinal),
+        "README must document clear between questions (FR #687)");
 }
 
 static void TestFr661PickListInPlace()

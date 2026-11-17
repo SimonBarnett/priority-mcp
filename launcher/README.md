@@ -7,6 +7,8 @@ with the right context.
 
 **PickList (Up/Down/Enter).** On a cursor-capable console, `ConsolePick.PickList` draws the menu once. Up/Down (wrapping) and Home/End update only the old and new selected rows in place; selection has a coloured background and a `>` marker. Enter selects it; Esc cancels (returns null). Both leave the cursor below the menu. Redirected input/output, unsupported terminals, or menus too tall for the window use a single numbered list and line input instead. The customer menu rows are General, then customer names, then New (New still Ask Haitch). The project / service-call menu uses the same picker. The CLI menu remains a later FR. `/airc` (FR #635) uses the same PickList for connected airc hosts.
 
+**Clear between questions (FR #687).** On an interactive TTY (stdin/stdout not redirected), each `PickList` and each `Ask` clears the console before showing the next prompt so prior answers do not scroll into one long screen. Redirected stdin/stdout and `--mcp-catalog` never clear.
+
 Non-interactive flags are unchanged: `--customer`, `--general`, and `--project` skip the picker. With stdin redirected, a numeric line still picks (1 = General, 2 = first customer). Do not print the picker on `--mcp-catalog` JSON-RPC stdout.
 
 **Wait spinner (`|` `/` `-` `\`).** `ConsoleWait.WithWait` cycles those glyphs on one TTY line while work runs, then settles to "done". A failed hours-list GET, fuel-report GET, or `ListCustomers` gh api does not print "done". Output stays quiet when stdin/stdout is redirected, or when `--mcp-catalog` sets `ConsoleWait.Quiet` before serve.
