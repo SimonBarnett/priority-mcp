@@ -248,10 +248,15 @@ static class Program
         Header($"[2] Customer repos (GitHub topic '{Topic}')");
         var customers = ListCustomers();
         Check(customers.Count > 0, $"{customers.Count} customer repo(s) tagged {Topic}");
-        for (int i = 0; i < customers.Count; i++)
+        // FR #675: do not dump the numbered list then show Pick customer again.
+        // Interactive path goes straight to PickList; --list keeps the dump.
+        if (ListOnly)
         {
-            var loc = FindClone(customers[i].Name, customers[i].FullName);
-            Console.WriteLine($"  {i + 1,2}. {customers[i].Name,-16} {(loc ?? "(not cloned yet)"),-28} {Trunc(customers[i].Description, 50)}");
+            for (int i = 0; i < customers.Count; i++)
+            {
+                var loc = FindClone(customers[i].Name, customers[i].FullName);
+                Console.WriteLine($"  {i + 1,2}. {customers[i].Name,-16} {(loc ?? "(not cloned yet)"),-28} {Trunc(customers[i].Description, 50)}");
+            }
         }
 
         Customer? cust = null;
