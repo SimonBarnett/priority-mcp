@@ -236,3 +236,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - Priority Agent: if last-used USERLOGIN exists for the WCF instance, do not ask --- bind it; only prompt when there is no saved login.
 - Priority Agent always prefers Grok among installed CLIs (FR #674); keep OfferWhich only when Grok is absent.
 - FORMCLTRIGTEXT line key may be TEXTLINE (with TEXTORD/INCFORM), not TEXLINE --- probe sys.columns before DELETE/INSERT.
+- Priority Agent interactive TTY: clear console at the start of each PickList and Ask so prior answers do not scroll; never Clear when stdin/stdout redirected
