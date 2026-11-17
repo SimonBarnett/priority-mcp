@@ -235,3 +235,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - When PickList already shows customer names, do not print a numbered topic dump first --- gate the dump on --list only (FR #675)
 - Priority Agent: if last-used USERLOGIN exists for the WCF instance, do not ask --- bind it; only prompt when there is no saved login.
 - Priority Agent always prefers Grok among installed CLIs (FR #674); keep OfferWhich only when Grok is absent.
+- FORMCLTRIGTEXT line key may be TEXTLINE (with TEXTORD/INCFORM), not TEXLINE --- probe sys.columns before DELETE/INSERT.
