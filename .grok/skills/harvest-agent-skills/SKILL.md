@@ -231,3 +231,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - A FIX offer for an MRB-FAIL tip with a stacked fix PR pushes that commit onto the assigned branch and closes the companion.
 - A launcher menu redraw MRB passes when the fake console shows one initial draw and exactly two row writes per arrow, plus a numbered fallback. Do not require a live MarchHare session when that contract is tested.
 - A DIRTY harvest tip whose bullets are a shorter copy of origin/main keeps the fuller main wording and the extra main bullet, then pushes the assigned branch.
+- Priority Agent must preserve an existing hosted MCP URL on interactive start; local stdio catalog is opt-in only.
