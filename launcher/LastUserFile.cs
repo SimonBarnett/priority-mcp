@@ -64,6 +64,25 @@ public static class LastUserFile
     }
 
     /// <summary>
+    /// FR #681: ask only when there is no usable last-used login (and no --hours-user,
+    /// and stdin is interactive). A saved last-user row binds without ReadLine.
+    /// </summary>
+    public static bool ShouldAskForUserLogin(
+        string? hoursUserArg,
+        string? savedLogin,
+        bool inputRedirected)
+    {
+        if (inputRedirected)
+            return false;
+        if (!string.IsNullOrWhiteSpace(hoursUserArg))
+            return false;
+        string saved = (savedLogin ?? "").Trim();
+        if (saved.Length > 0 && BobHours.IsPriorityUserLogin(saved))
+            return false;
+        return true;
+    }
+
+    /// <summary>
     /// --hours-user wins. Empty typed answer binds the saved login when present.
     /// </summary>
     public static string? ChooseRequestedUser(string? hoursUserArg, string? typedAnswer, string? savedLogin)
@@ -82,10 +101,11 @@ public static class LastUserFile
 
 
     /// <summary>
-    /// FR #386 / FR-004: resolve USERLOGIN for launch without calling ReadLine.
+    /// FR #386 / FR-004 / FR #681: resolve USERLOGIN for launch without calling ReadLine.
     /// When stdin is redirected, bind the saved login if present; otherwise leave null
     /// so BindSessionOwner returns Priority USERLOGIN unavailable (exit 2).
-    /// Interactive: empty Enter binds saved (FR-003); typed answer wins; never blocks.
+    /// Interactive with a saved last-used login: bind it without asking (FR #681).
+    /// Interactive with no saved login: typed answer wins; never blocks.
     /// </summary>
     public static string? ResolveLaunchUser(
         string? hoursUserArg,
@@ -96,7 +116,7 @@ public static class LastUserFile
         string flag = (hoursUserArg ?? "").Trim();
         if (flag.Length > 0)
             return flag;
-        if (inputRedirected)
+        if (inputRedirected || !ShouldAskForUserLogin(null, savedLogin, inputRedirected: false))
             return ChooseRequestedUser(null, null, savedLogin);
         return ChooseRequestedUser(null, typedAnswer, savedLogin);
     }

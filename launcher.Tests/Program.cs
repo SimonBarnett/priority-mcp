@@ -25,6 +25,8 @@ var checks = new List<(string Name, Action Run)>
     ("AI root skips missing D: and creates on first ready drive", TestAiRootCreatesOnFirstReady),
     ("AI root search lists AI and repos across ready drives", TestAiRootBuildSearchRoots),
     ("saved MEDATECH empty answer binds MEDATECH; prompt has [MEDATECH] not OS user", TestSavedLoginEmptyAnswer),
+    ("FR-681: saved last-used login skips Ask; source is saved", TestFr681SavedSkipsAsk),
+    ("FR-681: no saved login still asks interactively", TestFr681NoSavedStillAsks),
     ("--hours-user OTHER wins over saved MEDATECH", TestHoursUserWinsOverSaved),
     ("MRB-434: space login and access_token row are not suggested", TestInvalidSavedLoginIgnored),
     ("session metadata userLoginSource saved on empty Enter", TestSessionSourceSaved),
@@ -469,6 +471,54 @@ static void TestSavedLoginEmptyAnswer()
         Environment.SetEnvironmentVariable(LastUserFile.EnvPath, previous);
         DeleteTempDirectory(root);
     }
+}
+
+static void TestFr681SavedSkipsAsk()
+{
+    string root = NewTemp();
+    string? previous = Environment.GetEnvironmentVariable(LastUserFile.EnvPath);
+    try
+    {
+        string path = Path.Combine(root, "last-user.json");
+        File.WriteAllText(path,
+            """{"saas1":{"userLogin":"MEDATECH","company":"CO","identifiedAt":"2026-11-12T00:00:00Z","source":"whoami"}}""");
+        Environment.SetEnvironmentVariable(LastUserFile.EnvPath, path);
+        string? saved = LastUserFile.ReadUserLogin("saas1");
+        Assert(saved == "MEDATECH", "saved login");
+        Assert(!LastUserFile.ShouldAskForUserLogin(null, saved, inputRedirected: false),
+            "must not ask when last-used exists");
+        Assert(!LastUserFile.ShouldAskForUserLogin("OTHER", saved, inputRedirected: false),
+            "must not ask when --hours-user set");
+        Assert(!LastUserFile.ShouldAskForUserLogin(null, saved, inputRedirected: true),
+            "must not ask when redirected");
+        // Interactive with saved: ResolveLaunchUser binds without needing a typed answer.
+        string? requested = LastUserFile.ResolveLaunchUser(null, inputRedirected: false, saved, typedAnswer: null);
+        Assert(requested == "MEDATECH", "bind last-used without Ask, got " + requested);
+        Assert(SessionLoginMeta.ClassifySource(null, null, saved) == SessionLoginMeta.SourceSaved,
+            "source must be saved when Ask was skipped");
+        string src = ReadLauncherProgram();
+        Assert(src.Contains("ShouldAskForUserLogin", StringComparison.Ordinal),
+            "Program must gate Ask on ShouldAskForUserLogin");
+        Assert(src.Contains("FR #681", StringComparison.Ordinal) || src.Contains("FR#681", StringComparison.Ordinal),
+            "Program must cite FR #681");
+    }
+    finally
+    {
+        Environment.SetEnvironmentVariable(LastUserFile.EnvPath, previous);
+        DeleteTempDirectory(root);
+    }
+}
+
+static void TestFr681NoSavedStillAsks()
+{
+    Assert(LastUserFile.ShouldAskForUserLogin(null, null, inputRedirected: false),
+        "no saved login must still ask interactively");
+    Assert(LastUserFile.ShouldAskForUserLogin(null, "   ", inputRedirected: false),
+        "blank saved must still ask");
+    Assert(LastUserFile.ShouldAskForUserLogin(null, "bad login!", inputRedirected: false),
+        "invalid saved must still ask");
+    string prompt = LastUserFile.FormatPrompt(null);
+    Assert(prompt == "Priority USERLOGIN for this session: ", "bare prompt, got: " + prompt);
 }
 
 static void TestHoursUserWinsOverSaved()
