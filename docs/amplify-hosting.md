@@ -149,6 +149,10 @@ does not run it.
 
 Client URL: `https://mcp.ntsa.uk/mcp`.
 
+The Priority Agent launcher treats this hosted URL as the **default** MCP (FR #669).
+Starting an interactive session must not replace it with a local stdio catalog.
+Local stdio is opt-in only (`PriorityAgent.exe --mcp-local` or `PRIORITY_AGENT_MCP_LOCAL=1`).
+
 ```bash
 curl -sS https://mcp.ntsa.uk/mcp
 curl -sS -X POST https://mcp.ntsa.uk/mcp \

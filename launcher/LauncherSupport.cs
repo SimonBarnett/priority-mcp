@@ -5,6 +5,47 @@ public static class LauncherSupport
 {
     public const int MaxWindowsCommandLineLength = 32_000;
 
+    /// <summary>Default hosted Priority MCP (FR #669). Interactive start must preserve this URL.</summary>
+    public const string HostedMcpUrl = "https://mcp.ntsa.uk/mcp";
+
+    /// <summary>FR #669: true when PRIORITY_AGENT_MCP_LOCAL / --mcp-local opts into local stdio.</summary>
+    public static bool PreferLocalMcpStdio(string? envOrFlag)
+    {
+        string v = (envOrFlag ?? "").Trim().ToLowerInvariant();
+        return v is "1" or "true" or "yes" or "on" or "local" or "stdio";
+    }
+
+    /// <summary>FR #669: grok mcp list value looks like an HTTP(S) MCP registration.</summary>
+    public static bool IsHostedMcpRegistration(string? current)
+    {
+        string t = (current ?? "").Trim();
+        if (t.Length == 0) return false;
+        if (t.StartsWith("http://", StringComparison.OrdinalIgnoreCase)) return true;
+        if (t.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) return true;
+        // grok mcp list may prefix transport, e.g. "http https://mcp.ntsa.uk/mcp"
+        if (t.Contains("https://", StringComparison.OrdinalIgnoreCase)) return true;
+        if (t.Contains("http://", StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
+    /// <summary>
+    /// FR #669: what EnsureGrokMcp should do. Hosted URLs are never replaced unless local stdio is opted in.
+    /// </summary>
+    public static string DecideGrokMcpAction(string? current, string localWant, bool preferLocal)
+    {
+        string cur = (current ?? "").Trim();
+        string want = (localWant ?? "").Trim();
+        if (preferLocal)
+        {
+            if (cur.Equals(want, StringComparison.OrdinalIgnoreCase)) return "keep-local";
+            return "register-local";
+        }
+        if (IsHostedMcpRegistration(cur)) return "keep-hosted";
+        if (cur.Length == 0) return "register-hosted";
+        // Already local (or other) without opt-in: leave it; do not swap.
+        return "keep-configured";
+    }
+
     public static bool ConnectionFileExists(string path) => File.Exists(path);
 
     public static string ConnectionFileStatus(string customer, string path, bool exists) =>

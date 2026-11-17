@@ -24,7 +24,7 @@ static class Program
     const string McpName = "priority-catalog";
     const string FuelUrl = "https://bob.ntsa.uk/bob/v1/report";
 
-    static bool DryRun, ListOnly, Smoke, General, NoPause, NoFuel;
+    static bool DryRun, ListOnly, Smoke, General, NoPause, NoFuel, PreferLocalMcp;
     static string? CustomerArg, ProjectArg, CheckHoursDir, SessionArg;
     static string? HoursUserArg, HoursEntryIdArg;
     /// <summary>FR #570 / FR-004: --cli grok|cursor|opencode; when unset, MSI-style chooser (issue #569).</summary>
@@ -108,6 +108,7 @@ static class Program
                 case "--hours-user": HoursUserArg = Next(); break;
                 case "--hours-entry-id": HoursEntryIdArg = Next(); break;
                 case "--cli": CliArg = Next(); break;
+                case "--mcp-local": PreferLocalMcp = true; break;
                 case "-h": case "--help": case "/?": Help(); return 0;
                 default: Err($"Unknown argument: {args[i]}"); Help(); return 2;
             }
@@ -863,44 +864,73 @@ static class Program
     }
 
     // ------------------------------------------------------------------ grok config
-    // priority-catalog runs locally over stdio from the priority-mcp clone:
-    //   node <clone>\v2\apps\mcp-catalog\stdio.mjs   (the repo's own stdio entry point, no npm install needed)
-    // Fallback while the clone lacks stdio.mjs or node is missing: this exe's built-in port (--mcp-catalog),
-    // which serves the same <clone>\v2\apps\mcp-catalog\catalog. Any other registration (e.g. a remote URL) is replaced.
+    // FR #669: default MCP is the hosted catalog at https://mcp.ntsa.uk/mcp. An existing
+    // hosted URL must stay. Local stdio (node stdio.mjs / PriorityAgent.exe --mcp-catalog)
+    // is only registered when --mcp-local or PRIORITY_AGENT_MCP_LOCAL opts in.
     static void EnsureGrokMcp(string grok, string fomprep)
     {
         string script = Path.Combine(fomprep, "v2", "apps", "mcp-catalog", "stdio.mjs");
         string exe = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "PriorityAgent.exe");
         string seen = "";
         string? node = File.Exists(script) ? FindNode(out seen) : null;
-        string[] cmd;
-        if (node != null) cmd = new[] { node, script };
+        string[] localCmd;
+        if (node != null) localCmd = new[] { node, script };
         else
         {
-            cmd = new[] { exe, "--mcp-catalog" };   // grok mcp add priority-catalog -- exe --mcp-catalog
-            Warn(!File.Exists(script) ? $"{script} not in the clone; using PriorityAgent.exe --mcp-catalog for priority-catalog"
-                                      : $"no node >= 18 found ({seen}); using PriorityAgent.exe --mcp-catalog for priority-catalog");
+            localCmd = new[] { exe, "--mcp-catalog" };
+            if (PreferLocalMcp || LauncherSupport.PreferLocalMcpStdio(Environment.GetEnvironmentVariable("PRIORITY_AGENT_MCP_LOCAL")))
+            {
+                Warn(!File.Exists(script) ? $"{script} not in the clone; using PriorityAgent.exe --mcp-catalog for priority-catalog"
+                                          : $"no node >= 18 found ({seen}); using PriorityAgent.exe --mcp-catalog for priority-catalog");
+            }
         }
-        string want = string.Join(' ', cmd);
+        string localWant = string.Join(' ', localCmd);
+        bool preferLocal = PreferLocalMcp
+            || LauncherSupport.PreferLocalMcpStdio(Environment.GetEnvironmentVariable("PRIORITY_AGENT_MCP_LOCAL"));
         // FR #618 / S3: spinner on the console UI while grok mcp list/add/doctor run.
         // Quiet and redirected stdout (including --mcp-catalog) write nothing (S5).
         var (rc, outp, _) = ConsoleWait.WithWait("mcp register", () => Capture(grok, null, "mcp", "list"));
         string line = outp.Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.StartsWith(McpName + ":", StringComparison.OrdinalIgnoreCase)) ?? "";
         string current = line == "" ? "" : line[(McpName.Length + 1)..].Trim();
-        bool good = current.Equals(want, StringComparison.OrdinalIgnoreCase);
-        if (good) Check(true, $"MCP '{McpName}' registered (stdio): {current}");
-        else if (DryRun) { Info($"would run: grok mcp add {McpName} -- {want}   (currently: {(current == "" ? "not registered" : current)})"); return; }
-        else
+        string action = LauncherSupport.DecideGrokMcpAction(current, localWant, preferLocal);
+        if (action == "keep-hosted")
+            Check(true, $"MCP '{McpName}' kept (hosted): {current}");
+        else if (action == "keep-local")
+            Check(true, $"MCP '{McpName}' registered (stdio): {current}");
+        else if (action == "keep-configured")
+            Check(true, $"MCP '{McpName}' left as configured: {current}");
+        else if (action == "register-hosted")
         {
+            if (DryRun)
+            {
+                Info($"would run: grok mcp add --transport http {McpName} {LauncherSupport.HostedMcpUrl}   (currently: not registered)");
+                return;
+            }
+            int arc = ConsoleWait.WithWait("mcp register", () =>
+                RunTo(grok, null, "mcp", "add", "--transport", "http", McpName, LauncherSupport.HostedMcpUrl));
+            Check(arc == 0, $"registered MCP '{McpName}' (hosted) -> {LauncherSupport.HostedMcpUrl}");
+        }
+        else if (action == "register-local")
+        {
+            if (DryRun)
+            {
+                Info($"would run: grok mcp add {McpName} -- {localWant}   (currently: {(current == "" ? "not registered" : current)})");
+                return;
+            }
             int arc = ConsoleWait.WithWait("mcp register", () =>
             {
                 var a = new List<string> { "mcp", "add", McpName, "--" };
-                a.AddRange(cmd);
+                a.AddRange(localCmd);
                 return RunTo(grok, null, a.ToArray());
             });
-            Check(arc == 0, $"registered MCP '{McpName}' (stdio) -> {want}{(current == "" ? "" : $" (replaced: {current})")}");
+            // Never claim we replaced a hosted URL when preferLocal forced a swap — log previous for operators.
+            string suffix = current == "" ? "" : $" (was: {current})";
+            Check(arc == 0, $"registered MCP '{McpName}' (stdio) -> {localWant}{suffix}");
         }
-        if (DryRun && !good) return;
+        else
+            Check(false, $"MCP '{McpName}': unknown ensure action {action}");
+
+        if (DryRun && (action == "register-hosted" || action == "register-local")) return;
         var (drc, dout, derr) = ConsoleWait.WithWait("mcp doctor", () => Capture(grok, null, "mcp", "doctor", McpName));
         string d = (dout + derr).Trim();
         int sec = d.IndexOf(McpName + " (", StringComparison.OrdinalIgnoreCase);
@@ -1228,6 +1258,11 @@ PriorityAgent.exe [options]
                         standalone opencode.exe. Cursor/OpenCode never get Grok
                         MCP flags; --help is read first, else work-dir only.
                         Hours relaunch always uses the same chosen CLI.
+  --mcp-local           opt into local stdio priority-catalog (node stdio.mjs or
+                        PriorityAgent.exe --mcp-catalog). Default is the hosted MCP
+                        at https://mcp.ntsa.uk/mcp (FR #669). Env PRIORITY_AGENT_MCP_LOCAL=1
+                        is the same opt-in. An existing hosted URL is never replaced
+                        unless this flag/env is set.
   PRIORITY_AGENT_HOURS_JSON
                         fixture file for the list body; when set, no HTTP request is made
 ");

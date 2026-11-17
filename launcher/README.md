@@ -42,16 +42,18 @@ and does not download a CLI.
      (no `.git`) is skipped when another real clone exists. If no real clone exists, FATAL lists
      each candidate path and why it was rejected.
 2. It **loads the Priority MCP and skills** for every context. The registration is idempotent and user level:
-   - It registers the **`priority-catalog`** MCP as a **local stdio server run from the priority-mcp clone**:
+   - **Default (FR #669):** the **hosted** catalog at **`https://mcp.ntsa.uk/mcp`**.
+     `grok mcp add --transport http priority-catalog https://mcp.ntsa.uk/mcp`.
+     An existing hosted URL (including that one) is **left unchanged** when an interactive session starts.
+   - **Local stdio (opt-in only):** `--mcp-local` or `PRIORITY_AGENT_MCP_LOCAL=1` registers a local stdio
+     server from the priority-mcp clone:
      `grok mcp add priority-catalog -- node <clone>\v2\apps\mcp-catalog\stdio.mjs`.
      That is the repo's own zero-dependency stdio entry point (no npm install needed). It serves `list_catalog`,
-     `get_skill`, `get_instance_schema` and `get_runner_files` from `v2/apps/mcp-catalog/catalog`, so it's always as
-     current as the fast-forwarded clone.
+     `get_skill`, `get_instance_schema` and `get_runner_files` from `v2/apps/mcp-catalog/catalog`.
      - It needs Node 18+. It looks in `PRIORITY_AGENT_NODE`, `D:\tools\node`, PATH and Program Files, and checks each
        node's version (MarchHare's PATH node is v8, which is too old).
      - If there's no suitable node, or `stdio.mjs` is missing, it falls back to the same server built into the exe
        (`PriorityAgent.exe --mcp-catalog`).
-     - Any other registration, such as an old remote URL, is replaced.
      Then it runs `grok mcp doctor priority-catalog`.
    - It adds `<priority-mcp>/.grok/skills` to `[skills] paths` in `%USERPROFILE%\.grok\config.toml`.
      A timestamped `.bak-priorityagent-*` backup is written before any change.
