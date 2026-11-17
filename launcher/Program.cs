@@ -428,8 +428,9 @@ static class Program
         }
         string? typedAnswer = null;
         // FR-004: never ReadLine when stdin is redirected; bind saved login or fail unavailable.
-        // FR-003: interactive prompt offers [saved]; empty Enter binds saved.
-        if (string.IsNullOrWhiteSpace(HoursUserArg) && !Console.IsInputRedirected)
+        // FR #681: when a last-used login exists, bind it without asking.
+        // Interactive with no saved login: prompt "Priority USERLOGIN for this session:".
+        if (LastUserFile.ShouldAskForUserLogin(HoursUserArg, savedLogin, Console.IsInputRedirected))
             typedAnswer = Ask(LastUserFile.FormatPrompt(savedLogin));
         string? requestedUser = LastUserFile.ResolveLaunchUser(
             HoursUserArg, Console.IsInputRedirected, savedLogin, typedAnswer);
