@@ -14,6 +14,8 @@ sealed class ScriptedPickIO : IConsolePickIO
     public List<(int Top, string Text, bool Highlighted)> Rows { get; } = new();
     public List<int> RowCountsAtRead { get; } = new();
     public List<(int Left, int Top)> CursorMoves { get; } = new();
+    /// <summary>FR #687: how many times ClearScreen was invoked.</summary>
+    public int ClearCount { get; private set; }
 
     public ScriptedPickIO(bool redirected, ConsoleKeyInfo[]? keys = null, string[]? lines = null)
     {
@@ -50,4 +52,6 @@ sealed class ScriptedPickIO : IConsolePickIO
         Rows.Add((CursorTop, value, highlighted));
         Write(value);
     }
+
+    public void ClearScreen() => ClearCount++;
 }

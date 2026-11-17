@@ -19,6 +19,8 @@ public interface IConsolePickIO
     bool TryBeginMenu(int lineCount, out int top, out int width);
     void SetCursorPosition(int left, int top);
     void WriteRow(string value, bool highlighted);
+    /// <summary>FR #687: clear the console before a new interactive question (TTY only).</summary>
+    void ClearScreen();
 }
 
 /// <summary>Default console adapter for live TTY / redirected stdin.</summary>
@@ -84,6 +86,18 @@ public sealed class SystemConsolePickIO : IConsolePickIO
                 Console.BackgroundColor = background;
         }
     }
+
+    public void ClearScreen()
+    {
+        // FR #687: never clear when stdin/stdout is redirected (pipes, tests, MCP).
+        if (Console.IsInputRedirected || Console.IsOutputRedirected)
+            return;
+        try { Console.Clear(); }
+        catch (Exception ex) when (ex is IOException or PlatformNotSupportedException or ArgumentOutOfRangeException)
+        {
+            // Headless / no buffer — leave prior output as-is.
+        }
+    }
 }
 
 public static class ConsolePick
@@ -103,6 +117,9 @@ public static class ConsolePick
             throw new ArgumentException("PickList requires at least one item.", nameof(items));
 
         io ??= new SystemConsolePickIO();
+        // FR #687: clear between questions on interactive TTY so prior answers do not scroll.
+        if (!io.IsInputRedirected)
+            io.ClearScreen();
         if (io.IsInputRedirected || !io.TryBeginMenu(items.Count + 1, out int top, out int width))
             return PickRedirected(items, prompt, io);
 

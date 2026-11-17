@@ -1226,6 +1226,12 @@ static class Program
 
     static string Ask(string prompt)
     {
+        // FR #687: clear between questions on interactive TTY (not redirected).
+        if (!Console.IsInputRedirected && !Console.IsOutputRedirected)
+        {
+            try { Console.Clear(); }
+            catch (Exception ex) when (ex is IOException or PlatformNotSupportedException or ArgumentOutOfRangeException) { }
+        }
         Console.Write(prompt);
         return (Console.ReadLine() ?? "").Trim();
     }
