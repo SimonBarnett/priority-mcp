@@ -75,6 +75,12 @@ This checkout is the install pack. Do not run it against live/PRI. The runner fa
 
 WINRUN still puts the Si password on the child process command line for the CLI probe window (P1-C1). `cli-stdout.txt` is redacted to `***`. A Process Explorer screenshot during that window is the residual DEV-only risk. Cookie file `si-web-state.json` is not a live session (P0-A1): a 10s Playwright probe runs before park unless `-SkipWeb`. FORMKEYS hook is empty until a human dump (P1-H1). AT2 waived: no `ZCLA_AGENT_PREP_AT2` throwaway form on DEV. AT3 off-DEV fixture covers Ignore Duplicate Values → blocked-run.
 
+## Desktop shortcut (loose exe)
+
+After downloading `PriorityAgent.exe` from GitHub Releases, run `PriorityAgent.exe --install` once.
+That creates a per-user Desktop shortcut named **Priority Agent**. Use `--uninstall` to remove it.
+See `launcher/README.md` (FR #668). The optional MSI already installs Start Menu and Desktop shortcuts.
+
 ## Install on CE-PRIORITY-DEV1
 
 Scripts in this pack are unsigned. On DEV1 use Bypass (or the current process will hit `UnauthorizedAccess`):

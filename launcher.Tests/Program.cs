@@ -63,6 +63,8 @@ var checks = new List<(string Name, Action Run)>
     ("FR-661: navigation redraws only the two changed rows with highlight", TestFr661PickListInPlace),
     ("FR-661: unsupported or redirected consoles use one numbered list", TestFr661PickListFallback),
     ("FR-661: unchanged selection does not redraw; long rows cannot wrap", TestFr661PickListNoOpAndWidth),
+    ("FR-668: desktop shortcut create idempotent and remove", TestFr668DesktopShortcut),
+    ("FR-668: README documents --install and Desktop shortcut", TestFr668ReadmeDesktopShortcut),
     ("FR-613: wait spinner preview has >=2 distinct glyphs", TestFr613WaitSpinnerGlyphs),
     ("FR-613: redirected / Quiet WithWait writes nothing", TestFr613WaitQuietNoWrites),
     ("FR-613: Program sets Quiet before --mcp-catalog serve", TestFr613McpCatalogSetsQuiet),
@@ -1080,6 +1082,58 @@ static void TestFr661PickListNoOpAndWidth()
     }
 }
 
+static void TestFr668DesktopShortcut()
+{
+    string desktop = Path.Combine(Path.GetTempPath(), "pa-desktop-" + Guid.NewGuid().ToString("N"));
+    string install = Path.Combine(Path.GetTempPath(), "pa-install-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(desktop);
+    Directory.CreateDirectory(install);
+    string exe = Path.Combine(install, "PriorityAgent.exe");
+    File.WriteAllText(exe, "fake-exe");
+    var writer = new FakeShortcutWriter();
+    try
+    {
+        var once = DesktopShortcut.Ensure(exe, desktop, writer);
+        Assert(once.LinkPath == Path.Combine(desktop, "Priority Agent.lnk"), "link name must be Priority Agent.lnk");
+        Assert(File.Exists(once.LinkPath), "shortcut file must exist after Ensure");
+        Assert(writer.Writes == 1, "first Ensure writes once");
+        Assert(writer.LastTarget == Path.GetFullPath(exe), "target is the installed exe");
+        Assert(writer.LastWork == Path.GetFullPath(install), "working directory is the exe folder");
+        Assert(writer.LastDescription == DesktopShortcut.Description, "description is stable");
+
+        string moved = Path.Combine(install, "PriorityAgent.exe");
+        var twice = DesktopShortcut.Ensure(moved, desktop, writer);
+        Assert(writer.Writes == 2, "second Ensure overwrites the same link");
+        Assert(twice.LinkPath == once.LinkPath, "idempotent: one link path");
+        Assert(Directory.GetFiles(desktop, "*.lnk").Length == 1, "no duplicate .lnk files");
+        Assert(File.ReadAllText(twice.LinkPath).Contains(Path.GetFullPath(moved), StringComparison.Ordinal),
+            "updated link points at the current exe");
+
+        Assert(DesktopShortcut.Remove(desktop), "Remove deletes an existing shortcut");
+        Assert(!File.Exists(once.LinkPath), "link is gone after Remove");
+        Assert(!DesktopShortcut.Remove(desktop), "second Remove is a no-op");
+    }
+    finally
+    {
+        try { Directory.Delete(desktop, true); } catch { }
+        try { Directory.Delete(install, true); } catch { }
+    }
+}
+
+static void TestFr668ReadmeDesktopShortcut()
+{
+    string readme = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "fixtures", "launcher-README.md"));
+    Assert(readme.Contains("PriorityAgent.exe --install", StringComparison.Ordinal),
+        "README must document --install");
+    Assert(readme.Contains("PriorityAgent.exe --uninstall", StringComparison.Ordinal),
+        "README must document --uninstall");
+    Assert(readme.Contains("Priority Agent", StringComparison.Ordinal)
+           && readme.Contains("Desktop shortcut", StringComparison.OrdinalIgnoreCase),
+        "README must name the Desktop shortcut");
+    Assert(!readme.Contains(@"C:\Users\", StringComparison.OrdinalIgnoreCase),
+        "README must not hard-code a user Desktop path");
+}
+
 static void TestFr613WaitSpinnerGlyphs()
 {
     var frames = ConsoleWait.PreviewFrames("fetch", 4);
@@ -1629,6 +1683,28 @@ static void DeleteTempDirectory(string path)
 static void Assert(bool condition, string message)
 {
     if (!condition) throw new InvalidOperationException(message);
+}
+
+sealed class FakeShortcutWriter : DesktopShortcut.IWriter
+{
+    public int Writes;
+    public string? LastLink;
+    public string? LastTarget;
+    public string? LastWork;
+    public string? LastIcon;
+    public string? LastDescription;
+
+    public void Write(string linkPath, string targetExe, string workingDirectory, string iconLocation, string description)
+    {
+        Writes++;
+        LastLink = linkPath;
+        LastTarget = targetExe;
+        LastWork = workingDirectory;
+        LastIcon = iconLocation;
+        LastDescription = description;
+        Directory.CreateDirectory(Path.GetDirectoryName(linkPath)!);
+        File.WriteAllText(linkPath, "TargetPath=" + targetExe + "\nWorkingDirectory=" + workingDirectory + "\n");
+    }
 }
 
 sealed class FixtureAircTransport : IAircTransport
