@@ -153,7 +153,7 @@ books use `harvest-agent-skills` pointing at their home.)
 
 - FORMCLTRIGTEXT / POST-FIELD: leftover `SQL.ENV <> 'copyps'` skips non-copy companies (key-alone empty related fields; Choose still works) — fix in **priority-form-engineering**; after edit Form Prep with LASTPREPDATE + prep artifact mtime — **priority-form-prep-after-sql-change**; Session 0 WINACTIV hangs — **priority-formprep** (interactive or Web/CredMan path).
 - Priority Agent home (this repo) needs a-search-style CAST IRON Bobiverse intake: always pass `-Repo SimonBarnett/priority-mcp` (or the matching intake payload `repo`), ship repo-local `Report-FomprepIntakeIssue.ps1` / `Invoke-FomprepHarvest.ps1` wrappers, document dual-mode CWD vs referred skillbook in `docs/skillbook-referral.md`, and pin CAT needles for the intake default-repo path. File many small Goal/Deliverables/Testable FRs (not one omnibus). Backlog: issues #109-#118; docs park PR #119.
-- Register priority-catalog as PriorityAgent.exe --mcp-catalog stdio from the fomprep clone; do not grok mcp add the hosted mcp-priority URL (no DNS).
+- Priority Agent must preserve an existing hosted MCP URL on interactive start; local stdio catalog is opt-in only (FR #669; supersedes older no-DNS/local-stdio-default tip).
 - Priority Agent lists customers from GitHub topic priority-customer; ff-only clean main for fomprep; new customer/project is Ask Haitch only; secrets stay in C:\passwords\<repo>-connections.txt unread by the launcher.
 - When rules v2 lands connect-without-ask, update VISION.md in a separate FR (do not edit VISION inside the product PR); prefer DEV; never commit/echo secrets; ask before messaging people; refresh hostile pins that still require Never-touch/allowlist
 - Use priority-saas-oidc-login for Cloud WebUI Bearer; tabulaini from POST /webui/<tenant>; OTP single-use; prefer PAT for unattended OData
@@ -231,4 +231,3 @@ books use `harvest-agent-skills` pointing at their home.)
 - A FIX offer for an MRB-FAIL tip with a stacked fix PR pushes that commit onto the assigned branch and closes the companion.
 - A launcher menu redraw MRB passes when the fake console shows one initial draw and exactly two row writes per arrow, plus a numbered fallback. Do not require a live MarchHare session when that contract is tested.
 - A DIRTY harvest tip whose bullets are a shorter copy of origin/main keeps the fuller main wording and the extra main bullet, then pushes the assigned branch.
-- Priority Agent must preserve an existing hosted MCP URL on interactive start; local stdio catalog is opt-in only.
