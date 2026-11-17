@@ -236,3 +236,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - Priority Agent: if last-used USERLOGIN exists for the WCF instance, do not ask --- bind it; only prompt when there is no saved login.
 - Priority Agent always prefers Grok among installed CLIs (FR #674); keep OfferWhich only when Grok is absent.
 - FORMCLTRIGTEXT line key may be TEXTLINE (with TEXTORD/INCFORM), not TEXLINE --- probe sys.columns before DELETE/INSERT.
+- Priority Prepare Upgrade .sh is typically UTF-16 LE with BOM --- verify SHA-256, decode for review, keep UTF-8 .sh.txt dump separate from Install Upgrade binary (FR #688)
