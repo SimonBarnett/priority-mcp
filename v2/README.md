@@ -33,9 +33,9 @@ Deploy settings, env names, and what Amplify cannot run: [docs/amplify-hosting.m
 
 Skill leaflets still mention `mcp-priority.ntsa.uk`. That name is allowlisted if you attach it as a second hostname. It is not a separate app.
 
-**Local stdio (recommended):** `grok mcp add priority-catalog -- node <clone>/v2/apps/mcp-catalog/stdio.mjs`. It is zero-dependency (no npm install), serves `catalog/` from the clone and has the same tools. The Priority Agent launcher registers it automatically. Amplify does not serve stdio.
+**Hosted MCP (default, FR #669):** `https://mcp.ntsa.uk/mcp` (one JSON-RPC POST per request, protocol `2024-11-05`). Register with `grok mcp add --transport http priority-catalog https://mcp.ntsa.uk/mcp`. The Priority Agent launcher keeps this URL on interactive start and does not swap it for local stdio. Tools: `list_catalog`, `get_skill`, `get_instance_schema`, `get_runner_files`. There is **no** `prepare_form` on Amplify.
 
-Hosted MCP URL: `https://mcp.ntsa.uk/mcp` (one JSON-RPC POST per request, protocol `2024-11-05`). Tools: `list_catalog`, `get_skill`, `get_instance_schema`, `get_runner_files`. There is **no** `prepare_form` on Amplify.
+**Local stdio (opt-in):** `grok mcp add priority-catalog -- node <clone>/v2/apps/mcp-catalog/stdio.mjs`. It is zero-dependency (no npm install), serves `catalog/` from the clone and has the same tools. The launcher registers it only with `--mcp-local` or `PRIORITY_AGENT_MCP_LOCAL=1`. Amplify does not serve stdio.
 
 ## Local execute (after grab)
 

@@ -73,6 +73,8 @@ var checks = new List<(string Name, Action Run)>
     ("FR-619: hours fetch source wraps the GET; relaunch SKIP stays", TestFr619HoursFetchWired),
     ("FR-618: MCP register and doctor wrap grok waits; doctor text stays", TestFr618McpRegisterDoctorWired),
     ("FR-618: grok inspect skills check uses WithWait", TestFr618SkillsInspectWired),
+    ("FR-669: hosted MCP URL is kept; local stdio only when opted in", TestFr669HostedMcpPreserved),
+    ("FR-669: EnsureGrokMcp no longer replaces hosted with local by default", TestFr669EnsureGrokMcpSource),
     ("FR-616: fuel report TTY spinner settles done on success", TestFr616FuelReportTtyDone),
     ("FR-616: fuel report failure keeps detail and does not print done", TestFr616FuelReportFailNoDone),
     ("FR-616: fuel report source wraps GET; --no-fuel-check and Continue stay", TestFr616FuelReportWired),
@@ -1227,16 +1229,71 @@ static void TestFr618McpRegisterDoctorWired()
     string window = src[method..next];
     int listWait = window.IndexOf("WithWait(\"mcp register\"", StringComparison.Ordinal);
     int listCapture = window.IndexOf("\"mcp\", \"list\"", StringComparison.Ordinal);
-    int addWait = window.LastIndexOf("WithWait(\"mcp register\"", StringComparison.Ordinal);
-    int addCall = window.IndexOf("\"mcp\", \"add\"", StringComparison.Ordinal);
     int doctorWait = window.IndexOf("WithWait(\"mcp doctor\"", StringComparison.Ordinal);
     int doctorCapture = window.IndexOf("\"mcp\", \"doctor\"", StringComparison.Ordinal);
     Assert(listWait >= 0 && listCapture > listWait, "mcp list must run inside WithWait");
-    Assert(addWait >= 0 && addCall > addWait, "mcp add must run inside WithWait");
+    // FR #669: hosted and local register paths each wrap mcp add in WithWait("mcp register").
+    int addIdx = 0;
+    int addCount = 0;
+    while (true)
+    {
+        int nextAdd = window.IndexOf("\"mcp\", \"add\"", addIdx, StringComparison.Ordinal);
+        if (nextAdd < 0) break;
+        addCount++;
+        int waitBefore = window.LastIndexOf("WithWait(\"mcp register\"", nextAdd, StringComparison.Ordinal);
+        Assert(waitBefore >= 0 && waitBefore < nextAdd, "each mcp add must run inside WithWait");
+        addIdx = nextAdd + 1;
+    }
+    Assert(addCount >= 2, "hosted and local mcp add paths both present");
     Assert(doctorWait >= 0 && doctorCapture > doctorWait, "mcp doctor must run inside WithWait");
     Assert(window.Contains("grok mcp doctor {McpName}:", StringComparison.Ordinal), "doctor failure/success text unchanged");
     Assert(window.Contains("handshake failed", StringComparison.Ordinal), "doctor failure check stays");
     Assert(src.Contains("ConsoleWait.Quiet = true", StringComparison.Ordinal), "--mcp-catalog still sets Quiet");
+}
+
+static void TestFr669HostedMcpPreserved()
+{
+    // Reproduce 17 Nov 2026 11:35 GMT / Europe/London: hosted URL present, interactive start.
+    const string hosted = "https://mcp.ntsa.uk/mcp";
+    const string localWant = @"C:\tools\node\node.exe C:\AI\priority-mcp\v2\apps\mcp-catalog\stdio.mjs";
+    Assert(LauncherSupport.IsHostedMcpRegistration(hosted), "hosted URL detected");
+    Assert(LauncherSupport.IsHostedMcpRegistration("http https://mcp.ntsa.uk/mcp"), "transport-prefixed hosted");
+    Assert(!LauncherSupport.IsHostedMcpRegistration(localWant), "stdio is not hosted");
+    Assert(LauncherSupport.DecideGrokMcpAction(hosted, localWant, preferLocal: false) == "keep-hosted",
+        "hosted must stay when not opted into local (the regression)");
+    Assert(LauncherSupport.DecideGrokMcpAction(hosted, localWant, preferLocal: true) == "register-local",
+        "opt-in local may replace hosted");
+    Assert(LauncherSupport.DecideGrokMcpAction("", localWant, preferLocal: false) == "register-hosted",
+        "empty defaults to hosted");
+    Assert(LauncherSupport.DecideGrokMcpAction(localWant, localWant, preferLocal: false) == "keep-configured",
+        "existing local without opt-in is left alone");
+    Assert(LauncherSupport.DecideGrokMcpAction(localWant, localWant, preferLocal: true) == "keep-local",
+        "matching local with opt-in is kept");
+    Assert(LauncherSupport.PreferLocalMcpStdio("1"), "env 1 opts in");
+    Assert(!LauncherSupport.PreferLocalMcpStdio(""), "empty env does not opt in");
+    Assert(LauncherSupport.HostedMcpUrl == "https://mcp.ntsa.uk/mcp", "default hosted constant");
+}
+
+static void TestFr669EnsureGrokMcpSource()
+{
+    string src = ReadLauncherProgram();
+    int method = src.IndexOf("static void EnsureGrokMcp(", StringComparison.Ordinal);
+    Assert(method >= 0, "EnsureGrokMcp missing");
+    int next = src.IndexOf("static string? FindNode(", StringComparison.Ordinal);
+    string window = src[method..next];
+    Assert(window.Contains("DecideGrokMcpAction", StringComparison.Ordinal), "uses DecideGrokMcpAction");
+    Assert(window.Contains("keep-hosted", StringComparison.Ordinal), "keeps hosted");
+    Assert(window.Contains("register-hosted", StringComparison.Ordinal), "can register hosted default");
+    Assert(window.Contains("--transport", StringComparison.Ordinal), "hosted add uses --transport http");
+    Assert(window.Contains("HostedMcpUrl", StringComparison.Ordinal), "uses HostedMcpUrl constant");
+    Assert(window.Contains("PRIORITY_AGENT_MCP_LOCAL", StringComparison.Ordinal), "env opt-in");
+    Assert(src.Contains("case \"--mcp-local\"", StringComparison.Ordinal)
+        || src.Contains("case \"--mcp-local\":", StringComparison.Ordinal), "--mcp-local flag");
+    // Old behaviour that caused the 17 Nov swap must be gone.
+    Assert(!window.Contains("Any other registration (e.g. a remote URL) is replaced", StringComparison.Ordinal),
+        "old replace-remote comment must not remain");
+    Assert(!window.Contains("(replaced: {current})", StringComparison.Ordinal),
+        "must not log replaced: for the default path");
 }
 
 static void TestFr618SkillsInspectWired()
