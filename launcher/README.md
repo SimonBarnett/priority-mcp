@@ -98,9 +98,11 @@ PriorityAgent.exe --uninstall
 8. It **starts the chosen agent CLI** in the same console (issue #569 / FR #570 / FR-005):
    - **Agent CLI chooser (issue #569):** same rules as the MSI chooser. None installed and
      interactive: offer Grok, Cursor, OpenCode, or refuse. Refuse prints the not-found line
-     and exits 1 with no download. Exactly one installed: launch it. Two or more: ask which
-     (never by token fuel). A missing pick asks "Install it now?" before any download.
-     Redirected stdin does not prompt and does not download. Cursor is
+     and exits 1 with no download. Exactly one installed: launch it. Two or more with Grok
+     installed: launch Grok (FR #674; Priority Agent always uses Grok; never by token fuel).
+     Two or more without Grok: ask which (never by token fuel). A missing pick asks
+     "Install it now?" before any download. Redirected stdin does not prompt and does not
+     download (except launching Grok when it is among several). Cursor is
      `%LOCALAPPDATA%\cursor-agent\agent.cmd` (never the Cursor.exe GUI or
      `%USERPROFILE%\.grok\bin\agent.exe`; FR #568).
    - **`--cli grok|cursor|opencode`** (env `PRIORITY_AGENT_CLI`) skips the chooser and
@@ -239,7 +241,8 @@ Other options: `--root <dir>` (clone root; default: first existing `X:\AI` on C:
 
 Requirements: `git`, `gh` (logged in as SimonBarnett). With none installed and an interactive console
 the launcher offers Grok, Cursor, OpenCode, or refuse (exit 1, no download). Exactly one installed
-is launched. Two or more: the operator picks; token fuel is not used. For `--cli grok`: Grok CLI
+is launched. Two or more with Grok: Grok is launched (FR #674). Two or more without Grok: the
+operator picks; token fuel is not used. For `--cli grok`: Grok CLI
 (`%USERPROFILE%\.grok\bin\grok.exe`). For `--cli cursor`: `%LOCALAPPDATA%\cursor-agent\agent.cmd`
 (never the Cursor.exe GUI or `%USERPROFILE%\.grok\bin\agent.exe`). For `--cli opencode`:
 `%USERPROFILE%\.opencode\bin\opencode.exe` or a standalone `opencode.exe` under LocalAppData/home.

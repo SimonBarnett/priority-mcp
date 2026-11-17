@@ -48,7 +48,8 @@ var checks = new List<(string Name, Action Run)>
     ("FR-569: zero CLIs interactive offers Grok Cursor OpenCode refuse", TestFr569ZeroInteractiveOffersMenu),
     ("FR-569: refuse prints not-found and does not download", TestFr569RefuseNoDownload),
     ("FR-569: exactly one installed launches it", TestFr569ExactlyOneLaunches),
-    ("FR-569: two or more ask which; fuel is not used", TestFr569ManyAskWhichNotFuel),
+    ("FR-569/674: two or more with grok prefer grok; fuel not used", TestFr569ManyAskWhichNotFuel),
+    ("FR-674: two or more without grok still ask which", TestFr674ManyWithoutGrokAskWhich),
     ("FR-569: missing pick asks Install it now before download", TestFr569MissingAsksInstall),
     ("FR-569: redirected stdin does not prompt or download", TestFr569RedirectedNoPromptNoDownload),
     ("FR-569: missing grok.exe is not the only error path", TestFr569CursorOnlyLaunches),
@@ -854,15 +855,26 @@ static void TestFr569ExactlyOneLaunches()
 
 static void TestFr569ManyAskWhichNotFuel()
 {
+    // FR #674: Priority Agent always prefers Grok when it is among several CLIs.
     var grok = Fake(AgentCliKind.Grok, "grok.exe");
     var cursor = Fake(AgentCliKind.Cursor, "agent.cmd");
     var r = CliChooser.Decide(new[] { grok, cursor }, stdinRedirected: false, pick: null, installNow: null);
-    Assert(r.Action == CliChooserAction.OfferWhich, "two installed must ask which");
+    Assert(r.Action == CliChooserAction.Launch && r.Launch?.Kind == AgentCliKind.Grok,
+        "two+ with grok must launch grok without asking, got: " + r.Action);
+    Assert(!r.Download, "prefer-grok must not download");
+    var picked = CliChooser.Decide(new[] { grok, cursor }, stdinRedirected: false, pick: AgentCliKind.Cursor, installNow: null);
+    Assert(picked.Launch?.Kind == AgentCliKind.Cursor, "explicit --cli/pick still wins; fuel does not");
+}
+
+static void TestFr674ManyWithoutGrokAskWhich()
+{
+    var cursor = Fake(AgentCliKind.Cursor, "agent.cmd");
+    var open = Fake(AgentCliKind.OpenCode, "opencode.exe");
+    var r = CliChooser.Decide(new[] { cursor, open }, stdinRedirected: false, pick: null, installNow: null);
+    Assert(r.Action == CliChooserAction.OfferWhich, "two+ without grok still ask which");
     Assert(r.Message.Contains("Do not pick by token fuel", StringComparison.Ordinal),
         "which-prompt must forbid token fuel, got: " + r.Message);
     Assert(r.Launch == null && !r.Download, "which-prompt must not auto-launch or download");
-    var picked = CliChooser.Decide(new[] { grok, cursor }, stdinRedirected: false, pick: AgentCliKind.Cursor, installNow: null);
-    Assert(picked.Launch?.Kind == AgentCliKind.Cursor, "user pick wins; fuel does not");
 }
 
 static void TestFr569MissingAsksInstall()
@@ -884,9 +896,14 @@ static void TestFr569RedirectedNoPromptNoDownload()
         "redirected zero must not prompt or download");
     var grok = Fake(AgentCliKind.Grok, "grok.exe");
     var cursor = Fake(AgentCliKind.Cursor, "cursor.exe");
+    // FR #674: redirected many that include grok launch grok (no prompt).
     var many = CliChooser.Decide(new[] { grok, cursor }, stdinRedirected: true, pick: null, installNow: null);
-    Assert(many.Action == CliChooserAction.Refuse && !many.Download,
-        "redirected many must not prompt, pick by fuel, or download");
+    Assert(many.Action == CliChooserAction.Launch && many.Launch?.Kind == AgentCliKind.Grok && !many.Download,
+        "redirected many with grok must launch grok without prompt or download");
+    var noGrok = CliChooser.Decide(new[] { cursor, Fake(AgentCliKind.OpenCode, "opencode.exe") },
+        stdinRedirected: true, pick: null, installNow: null);
+    Assert(noGrok.Action == CliChooserAction.Refuse && !noGrok.Download,
+        "redirected many without grok must refuse (no prompt / no fuel pick)");
 }
 
 static void TestFr569CursorOnlyLaunches()

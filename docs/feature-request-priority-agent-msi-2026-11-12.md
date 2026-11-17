@@ -25,7 +25,7 @@ LOCKED
 | S4 | Silent install | `msiexec /i ... /qn` exits 0, installs Priority Agent, shows no dialog, and starts no CLI installer. | WiX source check in `tests/priority-agent-cli/` plus one local `/qn` smoke | Silent install fails because a CLI is missing, or it downloads one. |
 | S5 | Right Windows user | Each installer runs as the interactive user. No deferred system custom action runs any of them. | `tests/priority-agent-cli/` asserts the installer token is the user | A CLI appears only under the SYSTEM profile. |
 | S6 | Cursor is not Grok | A machine whose only agent.exe is under the Grok bin is reported as Cursor missing. | `tests/priority-agent-cli/` fixture with `.grok\bin\agent.exe` and no cursor-agent cmd | The chooser marks Cursor installed. |
-| S7 | Launcher choice | None installed: show the three plus refuse. Refuse exits 1 with no download. Exactly one installed: launch it. Two or more: ask which. A missing pick asks to install, then launches. Redirected stdin does not download. | `tests/priority-agent-cli/` launcher cases for 0, 1, and many CLIs | It only errors for a missing grok.exe, auto-picks by fuel, or downloads with no yes. |
+| S7 | Launcher choice | None installed: show the three plus refuse. Refuse exits 1 with no download. Exactly one installed: launch it. Two or more with Grok: launch Grok (FR #674). Two or more without Grok: ask which. A missing pick asks to install, then launches. Redirected stdin does not download (Grok among many still launches). | `tests/priority-agent-cli/` launcher cases for 0, 1, and many CLIs | It only errors for a missing grok.exe, auto-picks by fuel, or downloads with no yes. |
 | S8 | Launch the chosen tool | Grok keeps the current RunGrok argument list. Cursor and OpenCode start in the work directory without those arguments. The hours loop relaunches the chosen CLI. | `tests/priority-agent-cli/` asserts the started exe path and that Cursor/OpenCode args omit Grok MCP flags | The launcher still starts only grok.exe, or Grok flags are passed through unchanged. |
 
 ## Shape
@@ -86,9 +86,11 @@ later double-click of Priority Agent
   -> none installed AND console interactive:
         same chooser; refuse -> not-found line, exit 1
   -> exactly one installed: launch it
-  -> two or more: ask which to launch
+  -> two or more with Grok: launch Grok (FR #674; never by token fuel)
+  -> two or more without Grok: ask which to launch
   -> pick a missing one: Install it now? Y installs then launches; N returns
-  -> stdin redirected: no prompt, no download, exit 1 when none is installed
+  -> stdin redirected: no prompt, no download; launch Grok when among several;
+     exit 1 when none is installed or several without Grok
 ```
 
 Detection:

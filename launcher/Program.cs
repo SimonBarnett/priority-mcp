@@ -1175,7 +1175,8 @@ static class Program
         LauncherSupport.ValidateWindowsCommandLine(executable, args, operation);
     }
 
-    /// <summary>Issue #569 / FR-004: MSI-style none / one / many / refuse chooser (no download).</summary>
+    /// <summary>Issue #569 / FR-004 / FR #674: MSI-style none / one / many / refuse chooser (no download).
+    /// Many with Grok installed launches Grok without asking.</summary>
     static CliChooserResult ChooseAgentCli(IReadOnlyList<FoundCli> installed)
     {
         AgentCliKind? pick = null;
