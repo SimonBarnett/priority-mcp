@@ -85,14 +85,16 @@ After the exe starts, and after git and gh are still required as today:
 - None installed, console interactive: same four choices. Refuse prints
   the existing not-found line and exits 1. No download.
 - Exactly one installed: launch that one. Do not ask.
-- Two or more installed: ask which to launch. Do not pick by token fuel.
+- Two or more installed and Grok is among them: launch Grok (FR #674;
+  Priority Agent always uses Grok). Do not ask. Do not pick by token fuel.
+- Two or more installed and Grok is not among them: ask which to launch.
+  Do not pick by token fuel.
 - The person picks a missing CLI: ask "Install it now?" Yes installs
   that one and then launches it. No returns to the list.
 - Stdin redirected: do not prompt and do not download. If none is
-  installed, print the not-found line and exit 1. If one or more is
-  already installed, this pack does not guess; exit 1 and name the
-  installed CLIs so the caller can pass a choice. A later slice may add
-  a flag. Until then, redirected stdin never downloads.
+  installed, print the not-found line and exit 1. If several are installed
+  and Grok is among them, launch Grok (FR #674). If several without Grok,
+  exit 1 so the caller can pass `--cli`. Redirected stdin never downloads.
 
 git and gh missing still exit 1 with the current error. This request
 does not offer to install them.

@@ -48,7 +48,8 @@ var checks = new List<(string Name, Action Run)>
     ("FR-569: zero CLIs interactive offers Grok Cursor OpenCode refuse", TestFr569ZeroInteractiveOffersMenu),
     ("FR-569: refuse prints not-found and does not download", TestFr569RefuseNoDownload),
     ("FR-569: exactly one installed launches it", TestFr569ExactlyOneLaunches),
-    ("FR-569: two or more ask which; fuel is not used", TestFr569ManyAskWhichNotFuel),
+    ("FR-569/674: two or more with grok prefer grok; fuel not used", TestFr569ManyAskWhichNotFuel),
+    ("FR-674: two or more without grok still ask which", TestFr674ManyWithoutGrokAskWhich),
     ("FR-569: missing pick asks Install it now before download", TestFr569MissingAsksInstall),
     ("FR-569: redirected stdin does not prompt or download", TestFr569RedirectedNoPromptNoDownload),
     ("FR-569: missing grok.exe is not the only error path", TestFr569CursorOnlyLaunches),
@@ -80,6 +81,11 @@ var checks = new List<(string Name, Action Run)>
     ("FR-616: fuel report TTY spinner settles done on success", TestFr616FuelReportTtyDone),
     ("FR-616: fuel report failure keeps detail and does not print done", TestFr616FuelReportFailNoDone),
     ("FR-616: fuel report source wraps GET; --no-fuel-check and Continue stay", TestFr616FuelReportWired),
+    ("FR-677: pcent.grok-build 81% is fuel (flamingo-shaped)", TestFr677GrokBuildPreferred),
+    ("FR-677: weekly fallback when pcent has no grok-build", TestFr677WeeklyFallback),
+    ("FR-677: legacy grok-chat still reads when no grok-build", TestFr677LegacyGrokChat),
+    ("FR-677: missing machine / missing figures is unknown", TestFr677UnknownWhenMissing),
+    ("FR-677: FuelCheck uses FuelMeter not grok-chat-only", TestFr677FuelCheckWired),
     ("MRB-633 hostile: WithWait on throw clears line and does not print done", TestMrb633WaitThrowNoDone),
     ("MRB-633 hostile: WithWait TTY emits glyphs then settle done", TestMrb633WaitTtyGlyphsAndSettle),
     ("FR-611: project PickList Down Enter selects first folder", TestFr611ProjectPickListFirstFolder),
@@ -88,6 +94,7 @@ var checks = new List<(string Name, Action Run)>
     ("FR-610: customer PickList Down Enter selects first customer", TestFr610CustomerPickListFirstCustomer),
     ("FR-610: customer resolve General / customer / New / cancel", TestFr610CustomerResolveRows),
     ("FR-610: redirected customer pick 2 selects first customer", TestFr610CustomerRedirectedFirst),
+    ("FR-675: interactive pick skips numbered customer dump (no duplicate list)", TestFr675NoDuplicateCustomerList),
     ("FR-615: ListCustomers wraps gh api with ConsoleWait.WithWait", TestFr615ListCustomersUsesWithWait),
     ("FR-615: ListCustomers failure path still Err + empty list", TestFr615ListCustomersFailurePathPin),
     ("FR-642: ListCustomers gh failure throws inside WithWait (no done settle)", TestFr642ListCustomersFailThrowsForSettle),
@@ -854,15 +861,26 @@ static void TestFr569ExactlyOneLaunches()
 
 static void TestFr569ManyAskWhichNotFuel()
 {
+    // FR #674: Priority Agent always prefers Grok when it is among several CLIs.
     var grok = Fake(AgentCliKind.Grok, "grok.exe");
     var cursor = Fake(AgentCliKind.Cursor, "agent.cmd");
     var r = CliChooser.Decide(new[] { grok, cursor }, stdinRedirected: false, pick: null, installNow: null);
-    Assert(r.Action == CliChooserAction.OfferWhich, "two installed must ask which");
+    Assert(r.Action == CliChooserAction.Launch && r.Launch?.Kind == AgentCliKind.Grok,
+        "two+ with grok must launch grok without asking, got: " + r.Action);
+    Assert(!r.Download, "prefer-grok must not download");
+    var picked = CliChooser.Decide(new[] { grok, cursor }, stdinRedirected: false, pick: AgentCliKind.Cursor, installNow: null);
+    Assert(picked.Launch?.Kind == AgentCliKind.Cursor, "explicit --cli/pick still wins; fuel does not");
+}
+
+static void TestFr674ManyWithoutGrokAskWhich()
+{
+    var cursor = Fake(AgentCliKind.Cursor, "agent.cmd");
+    var open = Fake(AgentCliKind.OpenCode, "opencode.exe");
+    var r = CliChooser.Decide(new[] { cursor, open }, stdinRedirected: false, pick: null, installNow: null);
+    Assert(r.Action == CliChooserAction.OfferWhich, "two+ without grok still ask which");
     Assert(r.Message.Contains("Do not pick by token fuel", StringComparison.Ordinal),
         "which-prompt must forbid token fuel, got: " + r.Message);
     Assert(r.Launch == null && !r.Download, "which-prompt must not auto-launch or download");
-    var picked = CliChooser.Decide(new[] { grok, cursor }, stdinRedirected: false, pick: AgentCliKind.Cursor, installNow: null);
-    Assert(picked.Launch?.Kind == AgentCliKind.Cursor, "user pick wins; fuel does not");
 }
 
 static void TestFr569MissingAsksInstall()
@@ -884,9 +902,14 @@ static void TestFr569RedirectedNoPromptNoDownload()
         "redirected zero must not prompt or download");
     var grok = Fake(AgentCliKind.Grok, "grok.exe");
     var cursor = Fake(AgentCliKind.Cursor, "cursor.exe");
+    // FR #674: redirected many that include grok launch grok (no prompt).
     var many = CliChooser.Decide(new[] { grok, cursor }, stdinRedirected: true, pick: null, installNow: null);
-    Assert(many.Action == CliChooserAction.Refuse && !many.Download,
-        "redirected many must not prompt, pick by fuel, or download");
+    Assert(many.Action == CliChooserAction.Launch && many.Launch?.Kind == AgentCliKind.Grok && !many.Download,
+        "redirected many with grok must launch grok without prompt or download");
+    var noGrok = CliChooser.Decide(new[] { cursor, Fake(AgentCliKind.OpenCode, "opencode.exe") },
+        stdinRedirected: true, pick: null, installNow: null);
+    Assert(noGrok.Action == CliChooserAction.Refuse && !noGrok.Download,
+        "redirected many without grok must refuse (no prompt / no fuel pick)");
 }
 
 static void TestFr569CursorOnlyLaunches()
@@ -1417,6 +1440,72 @@ static void TestFr616FuelReportWired()
     Assert(src.Contains("if (!NoFuel) FuelCheck()", StringComparison.Ordinal), "--no-fuel-check skips FuelCheck");
 }
 
+static void TestFr677GrokBuildPreferred()
+{
+    // Live flamingo shape 2026-11-17: pcent has grok-build:81 only (no Cursor Sand grok-chat).
+    using var doc = JsonDocument.Parse(
+        """{"machines":{"flamingo":{"id":"flamingo","pcent":{"grok-build":81},"weekly":81}}}""");
+    Assert(FuelMeter.TryGetMachine(doc.RootElement, "flamingo", out var me), "machine flamingo");
+    Assert(FuelMeter.TryRead(me, out var reading), "must read fuel");
+    Assert(reading.Key == FuelMeter.KeyGrokBuild && reading.Percent == 81,
+        $"expected grok-build 81, got {reading.Key} {reading.Percent}");
+    // Prefer grok-build over a stale grok-chat if both exist.
+    using var both = JsonDocument.Parse(
+        """{"pcent":{"grok-build":81,"grok-chat":0},"weekly":81}""");
+    Assert(FuelMeter.TryRead(both.RootElement, out var prefer), "both keys");
+    Assert(prefer.Key == FuelMeter.KeyGrokBuild && prefer.Percent == 81, "grok-build wins over grok-chat");
+}
+
+static void TestFr677WeeklyFallback()
+{
+    using var doc = JsonDocument.Parse("""{"weekly":42,"pcent":{}}""");
+    Assert(FuelMeter.TryRead(doc.RootElement, out var reading), "weekly fallback");
+    Assert(reading.Key == FuelMeter.KeyWeekly && reading.Percent == 42, "weekly 42");
+}
+
+static void TestFr677LegacyGrokChat()
+{
+    using var doc = JsonDocument.Parse("""{"pcent":{"grok-chat":55}}""");
+    Assert(FuelMeter.TryRead(doc.RootElement, out var reading), "legacy grok-chat");
+    Assert(reading.Key == FuelMeter.KeyGrokChatLegacy && reading.Percent == 55, "grok-chat 55");
+}
+
+static void TestFr677UnknownWhenMissing()
+{
+    using var empty = JsonDocument.Parse("""{"machines":{"flamingo":{"pcent":{}}}}""");
+    Assert(FuelMeter.TryGetMachine(empty.RootElement, "FLAMINGO", out var me), "case-insensitive machine");
+    Assert(!FuelMeter.TryRead(me, out _), "empty pcent is unknown");
+    using var none = JsonDocument.Parse("""{"machines":{}}""");
+    Assert(!FuelMeter.TryGetMachine(none.RootElement, "flamingo", out _), "missing machine");
+}
+
+static void TestFr677FuelCheckWired()
+{
+    string src = ReadLauncherProgram();
+    Assert(src.Contains("FuelMeter.TryRead", StringComparison.Ordinal), "FuelCheck must use FuelMeter.TryRead");
+    Assert(src.Contains("FuelMeter.TryGetMachine", StringComparison.Ordinal), "FuelCheck must use FuelMeter.TryGetMachine");
+    Assert(src.Contains("grok-build", StringComparison.Ordinal), "FuelCheck/docs path must name grok-build");
+    // Must not be the old grok-chat-only gate.
+    Assert(!src.Contains("pc.TryGetProperty(\"grok-chat\"", StringComparison.Ordinal),
+        "FuelCheck must not read grok-chat alone");
+    string readme = File.ReadAllText(Path.Combine(
+        Path.GetDirectoryName(ReadLauncherProgramPath())!, "README.md"));
+    Assert(readme.Contains("grok-build", StringComparison.Ordinal), "README must document grok-build");
+}
+
+static string ReadLauncherProgramPath()
+{
+    string[] candidates =
+    {
+        Path.GetFullPath(Path.Combine("..", "launcher", "Program.cs")),
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "launcher", "Program.cs")),
+        Path.GetFullPath("launcher/Program.cs"),
+    };
+    string? path = candidates.FirstOrDefault(File.Exists);
+    Assert(path is not null, "launcher/Program.cs not found");
+    return path!;
+}
+
 static void TestFr613McpCatalogSetsQuiet()
 {
     string[] candidates =
@@ -1672,6 +1761,23 @@ static string ReadLauncherProgramSrc()
     string? path = FindLauncherProgramPath();
     Assert(path is not null, "launcher/Program.cs not found");
     return File.ReadAllText(path!);
+}
+
+static void TestFr675NoDuplicateCustomerList()
+{
+    // FR #675: Si — do not print the numbered topic dump then Pick customer again.
+    // Keep the dump for --list only; interactive path goes straight to PickList.
+    string src = ReadLauncherProgramSrc();
+    int section = src.IndexOf("Customer repos (GitHub topic", StringComparison.Ordinal);
+    Assert(section >= 0, "customer section missing");
+    int pick = src.IndexOf("Pick customer:", section, StringComparison.Ordinal);
+    Assert(pick > section, "Pick customer missing after topic header");
+    string block = src.Substring(section, pick - section);
+    Assert(block.Contains("if (ListOnly)", StringComparison.Ordinal)
+        || block.Contains("if(ListOnly)", StringComparison.Ordinal),
+        "numbered customer dump must be gated on ListOnly before Pick customer");
+    Assert(block.Contains("(not cloned yet)", StringComparison.Ordinal),
+        "--list dump still shows clone status");
 }
 
 static void TestFr615ListCustomersUsesWithWait()

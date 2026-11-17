@@ -30,6 +30,8 @@ public sealed record CliChooserResult(
 /// <summary>
 /// Issue #569 / FR-004: same choice rules as the MSI chooser, without downloads (FR-003).
 /// Cursor probe paths align with FR #568 (cursor-agent\agent.cmd; never Cursor.exe GUI or .grok\bin\agent.exe).
+/// FR #674: when several CLIs are installed and Grok is among them, launch Grok (Priority Agent
+/// always uses Grok); do not ask. Explicit pick / --cli still wins. Still never pick by token fuel.
 /// </summary>
 public static class CliChooser
 {
@@ -38,6 +40,7 @@ public static class CliChooser
     public const string InstallNowPrompt = "Install it now?";
     public const string ZeroMenu =
         "None installed. Offer Grok, Cursor, OpenCode, or refuse.";
+    /// <summary>Used only when two or more are installed and Grok is not among them (FR #674).</summary>
     public const string WhichPrompt =
         "Two or more agent CLIs are installed. Ask which to launch. Do not pick by token fuel.";
 
@@ -125,6 +128,11 @@ public static class CliChooser
                 return Refuse();
             return new CliChooserResult(CliChooserAction.OfferZeroMenu, null, null, ZeroMenu, false, 0);
         }
+
+        // FR #674: Priority Agent always uses Grok when it is installed among several CLIs.
+        var preferGrok = Match(AgentCliKind.Grok);
+        if (preferGrok != null)
+            return Launch(preferGrok);
 
         if (stdinRedirected)
             return Refuse();

@@ -78,8 +78,10 @@ PriorityAgent.exe --uninstall
      A timestamped `.bak-priorityagent-*` backup is written before any change.
    - This is needed because Grok only reads project skills from the cwd's own repo, and a
      customer repo is a different repo. This makes the Priority skills visible to **all** Grok sessions on the machine.
-3. It **lists the customer repos**: SimonBarnett repos tagged with the GitHub topic **`priority-customer`**.
-   It uses the REST API through `gh api`, with no search-index lag.
+3. It **loads the customer repos**: SimonBarnett repos tagged with the GitHub topic **`priority-customer`**.
+   It uses the REST API through `gh api`, with no search-index lag. `--list` prints the numbered
+   table (name, clone path, description). Interactive mode skips that dump and goes straight to
+   **Pick customer** (FR #675 — no duplicate list).
 4. You pick one of three contexts:
    - **General Priority**: cwd is the priority-mcp clone.
    - **Customer**: cwd is the customer clone. A repo new to the machine is cloned into `<AI root>\<repo>`;
@@ -92,15 +94,19 @@ PriorityAgent.exe --uninstall
    from `launcher/customer-setup`. A project folder must already be an authoritative `SCxxxxxx` or `SOxxxxxx`.
    The Medatech booking id and WBS go in that folder's `project.md`, not in the folder name.
 7. It checks fuel like `ce-dayworks/scripts/Start-DayWorks.ps1`.
-   - Source: the Bob report `machines.<machine>.pcent["grok-chat"]`.
+   - Source: the Bob report `machines.<machine>.pcent["grok-build"]` (xAI weekly
+     remaining), then `machines.<machine>.weekly`, then legacy `pcent["grok-chat"]`
+     (Cursor Sand). Hosts without Cursor often publish only `grok-build` (FR #677).
    - Above 0 means the pool is used. 0 or unknown gives a warning and asks before continuing.
    - It never handles keys.
 8. It **starts the chosen agent CLI** in the same console (issue #569 / FR #570 / FR-005):
    - **Agent CLI chooser (issue #569):** same rules as the MSI chooser. None installed and
      interactive: offer Grok, Cursor, OpenCode, or refuse. Refuse prints the not-found line
-     and exits 1 with no download. Exactly one installed: launch it. Two or more: ask which
-     (never by token fuel). A missing pick asks "Install it now?" before any download.
-     Redirected stdin does not prompt and does not download. Cursor is
+     and exits 1 with no download. Exactly one installed: launch it. Two or more with Grok
+     installed: launch Grok (FR #674; Priority Agent always uses Grok; never by token fuel).
+     Two or more without Grok: ask which (never by token fuel). A missing pick asks
+     "Install it now?" before any download. Redirected stdin does not prompt and does not
+     download (except launching Grok when it is among several). Cursor is
      `%LOCALAPPDATA%\cursor-agent\agent.cmd` (never the Cursor.exe GUI or
      `%USERPROFILE%\.grok\bin\agent.exe`; FR #568).
    - **`--cli grok|cursor|opencode`** (env `PRIORITY_AGENT_CLI`) skips the chooser and
@@ -239,7 +245,8 @@ Other options: `--root <dir>` (clone root; default: first existing `X:\AI` on C:
 
 Requirements: `git`, `gh` (logged in as SimonBarnett). With none installed and an interactive console
 the launcher offers Grok, Cursor, OpenCode, or refuse (exit 1, no download). Exactly one installed
-is launched. Two or more: the operator picks; token fuel is not used. For `--cli grok`: Grok CLI
+is launched. Two or more with Grok: Grok is launched (FR #674). Two or more without Grok: the
+operator picks; token fuel is not used. For `--cli grok`: Grok CLI
 (`%USERPROFILE%\.grok\bin\grok.exe`). For `--cli cursor`: `%LOCALAPPDATA%\cursor-agent\agent.cmd`
 (never the Cursor.exe GUI or `%USERPROFILE%\.grok\bin\agent.exe`). For `--cli opencode`:
 `%USERPROFILE%\.opencode\bin\opencode.exe` or a standalone `opencode.exe` under LocalAppData/home.
