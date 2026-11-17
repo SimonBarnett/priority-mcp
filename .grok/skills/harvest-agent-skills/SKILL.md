@@ -232,3 +232,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - A launcher menu redraw MRB passes when the fake console shows one initial draw and exactly two row writes per arrow, plus a numbered fallback. Do not require a live MarchHare session when that contract is tested.
 - A DIRTY harvest tip whose bullets are a shorter copy of origin/main keeps the fuller main wording and the extra main bullet, then pushes the assigned branch.
 - When a product ships a bare exe without an MSI, put Desktop shortcut create/remove on --install/--uninstall using the OS Desktop folder, and route build.ps1 -Install through the same flag.
+- When PickList already shows customer names, do not print a numbered topic dump first --- gate the dump on --list only (FR #675)
