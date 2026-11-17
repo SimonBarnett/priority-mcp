@@ -88,6 +88,7 @@ var checks = new List<(string Name, Action Run)>
     ("FR-610: customer PickList Down Enter selects first customer", TestFr610CustomerPickListFirstCustomer),
     ("FR-610: customer resolve General / customer / New / cancel", TestFr610CustomerResolveRows),
     ("FR-610: redirected customer pick 2 selects first customer", TestFr610CustomerRedirectedFirst),
+    ("FR-675: interactive pick skips numbered customer dump (no duplicate list)", TestFr675NoDuplicateCustomerList),
     ("FR-615: ListCustomers wraps gh api with ConsoleWait.WithWait", TestFr615ListCustomersUsesWithWait),
     ("FR-615: ListCustomers failure path still Err + empty list", TestFr615ListCustomersFailurePathPin),
     ("FR-642: ListCustomers gh failure throws inside WithWait (no done settle)", TestFr642ListCustomersFailThrowsForSettle),
@@ -1672,6 +1673,23 @@ static string ReadLauncherProgramSrc()
     string? path = FindLauncherProgramPath();
     Assert(path is not null, "launcher/Program.cs not found");
     return File.ReadAllText(path!);
+}
+
+static void TestFr675NoDuplicateCustomerList()
+{
+    // FR #675: Si — do not print the numbered topic dump then Pick customer again.
+    // Keep the dump for --list only; interactive path goes straight to PickList.
+    string src = ReadLauncherProgramSrc();
+    int section = src.IndexOf("Customer repos (GitHub topic", StringComparison.Ordinal);
+    Assert(section >= 0, "customer section missing");
+    int pick = src.IndexOf("Pick customer:", section, StringComparison.Ordinal);
+    Assert(pick > section, "Pick customer missing after topic header");
+    string block = src.Substring(section, pick - section);
+    Assert(block.Contains("if (ListOnly)", StringComparison.Ordinal)
+        || block.Contains("if(ListOnly)", StringComparison.Ordinal),
+        "numbered customer dump must be gated on ListOnly before Pick customer");
+    Assert(block.Contains("(not cloned yet)", StringComparison.Ordinal),
+        "--list dump still shows clone status");
 }
 
 static void TestFr615ListCustomersUsesWithWait()
