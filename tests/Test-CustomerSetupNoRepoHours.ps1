@@ -56,6 +56,12 @@ Gate 'rules-never-repo' ($ar -match '(?i)Hours never go in the customer repo') '
 $rv = [int]([regex]::Match($ar, 'rules-version:\s*(\d+)').Groups[1].Value)
 Gate 'rules-version' ($rv -ge 8) "rules-version $rv"
 
+# Root AGENTS.md must match agent-rules (no hours entry ids / hours store in log.md).
+$agents = Read 'AGENTS.md'
+Gate 'agents-webhook' ($agents -match $hook) 'AGENTS.md points at Bob hours webhook'
+Gate 'agents-never-repo' ($agents -match '(?i)NEVER stored or reported in a customer repo') 'AGENTS.md forbids repo hours'
+Gate 'agents-no-entry-id-in-log' ($agents -notmatch '(?i)Bob hours entry id') 'AGENTS.md does not put hours entry id in log.md'
+
 if ($failed -gt 0) { Write-Host "Test-CustomerSetupNoRepoHours FAIL ($failed)"; exit 1 }
 Write-Host 'Test-CustomerSetupNoRepoHours PASS'
 exit 0
