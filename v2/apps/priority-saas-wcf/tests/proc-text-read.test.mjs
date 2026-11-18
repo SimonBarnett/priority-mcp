@@ -96,8 +96,9 @@ test('Empty body exits 2 with proc_text_missing', async () => {
       safeEnd: async () => {},
     },
   );
+  // FR #696: bare EXEC empty TEXT is proc_text_empty; orchestrator falls back to EPROG.
   assert.equal(r.ok, false);
-  assert.equal(r.reason, 'proc_text_missing');
+  assert.equal(r.reason, 'proc_text_empty');
   const captured = captureEmit(() => fail('proc_text_missing', { action: 'proc.text', name: 'EMPTYPROC' }, 2));
   assert.equal(captured.code, 2);
   const parsed = JSON.parse(captured.text.trim());

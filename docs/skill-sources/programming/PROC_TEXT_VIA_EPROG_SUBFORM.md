@@ -22,5 +22,5 @@ Do **not** invent subform names. If `startSubForm('PROG')` fails with “Can't f
 
 ## Related
 
-- `priority-saas-wcf` `proc text` (EXEC header TEXT only).
+- `priority-saas-wcf` `proc text` (FR #696): EXEC header TEXT first; automatic EPROG→PROG→PROGTEXT fallback with `steps[]` when header TEXT is empty.
 - WINHTML file output paths: prefer Priority-root relative paths; for user DOWNLOAD / mail delivery, `../../system/mail/<file>` is the usual attachable location (see SDK document-execution examples using `../../` and mail folders under `system/mail`).
