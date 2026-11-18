@@ -238,3 +238,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - FORMCLTRIGTEXT line key may be TEXTLINE (with TEXTORD/INCFORM), not TEXLINE --- probe sys.columns before DELETE/INSERT.
 - Priority Prepare Upgrade .sh is typically UTF-16 LE with BOM --- verify SHA-256, decode for review, keep UTF-8 .sh.txt dump separate from Install Upgrade binary (FR #688)
 - Read procedure SQLI via EPROG->PROG->PROGTEXT when top-level PROG is unprepared; WINHTML output under ../../ may need system/mail for DOWNLOAD on SaaS
+- When whoami ok gains rememberWhoami path (FR #384), refresh mrb430 pin to return ok({ userLogin, source, path }); do not strip path from the CLI.
