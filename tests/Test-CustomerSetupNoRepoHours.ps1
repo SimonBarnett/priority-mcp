@@ -23,7 +23,8 @@ $rules = 'launcher/agent-rules\.md'
 foreach ($t in @($files | Where-Object { $_.Name -like '*.template' -or $_.Name -eq 'AGENTS.snippet.md' })) {
     $s = [IO.File]::ReadAllText($t.FullName)
     Gate ("no-hours-json:" + $t.Name) ($s -notmatch '(?i)hours\.json') 'template does not mention a repo hours.json'
-    Gate ("no-repo-hours-instr:" + $t.Name) ($s -notmatch '(?i)(record|report|log|write|store)\s+(your\s+)?hours\s+(in|to|into)\s+(this|the)\s+(repo|folder|file)') 'no report-hours-in-repo wording'
+    $affirm = $s -replace '(?is)never\s+store\s+or\s+report\s+hours\s+in\s+this\s+repo', ''
+    Gate ("no-repo-hours-instr:" + $t.Name) ($affirm -notmatch '(?i)(record|report|log|write|store)\s+(your\s+)?hours\s+(in|to|into)\s+(this|the)\s+(repo|folder|file)') 'no report-hours-in-repo wording'
     Gate ("no-hours-columns:" + $t.Name) ($s -notmatch '(?im)^\s*(hours|duration(_minutes)?|tquant)\s*:' -and $s -notmatch '(?i)\|\s*hours\s*\|') 'no hours fields or columns'
 }
 
