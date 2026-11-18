@@ -25,6 +25,7 @@ Authority: `docs/skill-sources/programming/VERSION_REVISION.md` and Eshbel
 5. Verify `INSTALLEDUPGTRIG` / hashes after Install; UI Installed is not enough.
 6. Compile/install ENAMEs only from `v2/config/pin.json`.
 7. Headless Prepare may fail with "Revision does not exist" while the row exists — human Prepare from Version Revisions is valid; do not trust a pre-existing tiny `.sh` as TAKE emission proof.
+8. **Encoding (FR #688):** packaged Prepare Upgrade shells are typically **UTF-16 LE with BOM**. Record **SHA-256** of the binary; decode as UTF-16 to confirm TAKE/trigger text before PASS; keep a UTF-8 `.sh.txt` review dump separate from the Install Upgrade binary.
 
 ## Related
 

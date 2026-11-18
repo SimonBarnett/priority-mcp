@@ -1,4 +1,4 @@
-<!-- rules-version: 7 -->
+<!-- rules-version: 8 -->
 # Priority agent rules (from the Priority Agent launcher)
 
 The launcher fills in the {{...}} values on every start. These rules sit on top of
@@ -113,16 +113,20 @@ GitHub events stay on `POST /bob/v1/git`. That route is not the hours store.
   retries, and duplicated effort. If the estimate is uncertain, say so in the sentence.
   Parallel agent time is not added up.
   Haitch proposes bookings, Simon approves them. Never book hours in Priority yourself.
+- **Hours never go in the customer repo.** The Bob hours webhook above is the only place hours
+  are reported or stored. Do not create or edit `hours.json`, hours files, hours folders or
+  hours tables in a customer repo, and do not write hours, durations or hours entry ids into
+  repo files. Booking project and WBS stay as metadata in the work folder `project.md`.
 - **CAST IRON project work log:** also append a short entry to `log.md` in `{{PROJECT_DIR}}`
-  (when a project is selected). Create the file if missing. `log.md` is billing narrative evidence;
-  it is **not** the hours database.
+  (when a project is selected). Create the file if missing. `log.md` is a narrative of the work
+  done only; it is **not** the hours database and carries no hours, durations or hours entry ids.
 
 ## End of session
 
 Before you stop:
 - Close your hours webhook entry (above). This is not optional.
-- Append the project `log.md` evidence when a project is selected.
-- Summarise what changed and where: general Priority change, customer repo, project folder, hours entry id.
+- Append the project `log.md` work narrative when a project is selected (no hours in it).
+- Summarise what changed and where: general Priority change, customer repo, project folder, and (in chat only, not in a repo file) the hours entry id.
 - List anything that needs Simon or Haitch.
 
 ## Skills DAG + customer overlay (FR #354; FR #362)

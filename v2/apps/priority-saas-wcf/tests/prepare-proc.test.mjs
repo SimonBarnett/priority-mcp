@@ -221,3 +221,56 @@ test('gateUnavailable when no SQL/OData', () => {
   assert.equal(g.status, 'unavailable');
   assert.equal(g.preparedClaim, false);
 });
+
+test('FR #698: OData 404 gate never preparedClaim and carries clear hint', async () => {
+  const { fetchODataPrepSnapshot } = await import('../lib/gate.mjs');
+  const fetchImpl = async () => ({
+    ok: false,
+    status: 404,
+    text: async () => '{"error":{"message":"Resource not found"}}',
+  });
+  const r = await fetchODataPrepSnapshot(
+    { odataBase: 'https://example.invalid/odata/tab.ini,3/co', odataPrepPath: 'FORMS' },
+    'PROG',
+    { accessToken: 'FAKE_bearer_for_test', fetchImpl },
+  );
+  assert.equal(r.ok, false);
+  assert.equal(r.status, 'odata_http_404');
+  assert.equal(r.preparedClaim, false);
+  assert.equal(r.entity, 'FORMS');
+  assert.match(String(r.message || ''), /walkOk|preparedClaim|not proof/i);
+  assert.match(String(r.hint || ''), /odataPrepPath|service document|EPROG/i);
+});
+
+test('FR #698: odataPrepFallbacks tries next entity after 404', async () => {
+  const { fetchODataPrepSnapshot } = await import('../lib/gate.mjs');
+  const hits = [];
+  const fetchImpl = async (url) => {
+    hits.push(String(url));
+    if (String(url).includes('/FORMS?')) {
+      return { ok: false, status: 404, text: async () => 'missing' };
+    }
+    return {
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({ value: [{ ENAME: 'PROG', UPD: 'Y', LASTPREPDATE: '1' }] }),
+    };
+  };
+  const r = await fetchODataPrepSnapshot(
+    {
+      odataBase: 'https://example.invalid/odata/tab.ini,3/co',
+      odataPrepPath: 'FORMS',
+      odataPrepFallbacks: ['EXECPREPLOCK'],
+    },
+    'PROG',
+    { accessToken: 'FAKE_bearer_for_test', fetchImpl },
+  );
+  assert.equal(r.ok, true);
+  assert.equal(r.status, 'snapshot');
+  assert.equal(r.entity, 'EXECPREPLOCK');
+  assert.equal(r.upd, 'Y');
+  assert.ok(hits.some((u) => u.includes('/FORMS?')));
+  assert.ok(hits.some((u) => u.includes('/EXECPREPLOCK?')));
+});
+

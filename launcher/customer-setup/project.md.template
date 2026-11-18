@@ -3,6 +3,7 @@
 # wbs is the work-breakdown code. It is a different field.
 # Leave a value blank until a human confirms it. Do not invent either value.
 # Company-level facts belong in the repo-root company.md, not here.
+# These are booking metadata only. Hours go to the Bob hours webhook, never this repo.
 
 priority_project:
 wbs:

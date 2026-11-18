@@ -10,10 +10,27 @@ copy of the same file; at runtime the clone copy is used when its
 Do not push the customer repo `main` from here. Do not deploy. Do not write
 to a customer database.
 
+## Hours: Bob hours webhook only
+
+Hours are always reported through the Bob hours webhook
+`https://bob.ntsa.uk/bob/v1/hours` (contract: SimonBarnett/bobiverse
+`jeeves/docs/webhooks.md`, [hours webhook FR #3450](https://github.com/SimonBarnett/bobiverse/blob/main/jeeves/docs/webhooks.md#hours-webhook-fr-3450--no-secret)) under the
+canonical rules in `launcher/agent-rules.md`. They are never stored or
+reported in the customer repo.
+
+- Never seed `hours.json`, hours files, hours folders, hours tables or
+  "report hours here" instructions into a customer repo.
+- The only hours text a customer repo carries is the pointer in
+  `AGENTS.snippet.md` to the webhook contract and the canonical rules.
+- Booking project and WBS stay as customer metadata in the work folder
+  `project.md` (and in `company.md`).
+
 ## Data the launcher reads
 
-Optional repo-root `hours.json` with only `customer` and `project`. No user.
-If that file is absent, the launcher uses the repo name and the selected folder.
+The launcher takes the hours `customer` from the repo name and the hours
+`project` from the selected SC/SO folder. Do not create a repo-root
+`hours.json`; the launcher only tolerates one that already exists in an older
+repo.
 
 `<folder>/project.md` may contain these lines in the prose or inside a fence:
 
@@ -40,8 +57,10 @@ The hours report uses the folder id and the session USERLOGIN. Booking review is
 - `<folder>/project.md` from `project.md.template`: `priority_project` (booking
   id, which may look like PR230001) and `wbs`. Those are routing fields, not
   the work sentence.
-- `<folder>/log.md` from `log.md.template`: narrative evidence only.
-- `AGENTS.snippet.md` is a pointer. It does not restate the hours rules.
+- `<folder>/log.md` from `log.md.template`: narrative of the work only. No hours,
+  durations or hours entry ids.
+- `AGENTS.snippet.md` is a pointer to the Bob hours webhook contract and the
+  canonical rules. It does not restate the hours rules.
 
 ## Connection routes
 
@@ -68,5 +87,7 @@ tell the operator immediately.
 ## What a customer repo does not hold
 
 Reporting policy, USERLOGIN defaults, description checks, and receipt checks.
-Those stay in this repository. Credentials stay in the MarchHare passwords
+Those stay in this repository. No `hours.json`, hours files, hours folders,
+hours tables, hours entry ids or hours-reporting instructions: hours live only
+in the Bob hours webhook. Credentials stay in the MarchHare passwords
 file, not in the repo.
