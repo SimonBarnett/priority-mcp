@@ -25,3 +25,6 @@ FR: `docs/feature-request-eshbel-priority-programming-harvest-2026-09-24.md`
 
 | EMPTY_NAMED_TRIGGER_STUB.md | Empty FORMTRIG named stub (0 FORMTRIGTEXT); restore from good instance |
 | PREPARE_PROCEDURE.md | priority-procedure-prep | TYPE=P/R via EXEC + REPPREPDIRECT2; gate UPD=N + d{T$EXEC}.prp mtime |
+| WINHTML_DOWNLOAD_PATHS.md | priority-winhtml-download | WINHTML last-arg paths; prefer ../../system/mail when DOWNLOAD/MAILMSG; PDF vs Excel |
+| SAAS_PREP_GATE_ODATA_404.md | priority-saas-wcf (docs) | prepare ok needs walkOk + preparedClaim; odata_http_404 gate |
+| PROC_TEXT_VIA_EPROG_SUBFORM.md | priority-saas-wcf (docs) | EPROG→PROG→PROGTEXT when PROG unprepared / EXEC TEXT empty |
