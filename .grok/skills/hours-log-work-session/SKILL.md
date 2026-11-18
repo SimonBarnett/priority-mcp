@@ -1,7 +1,7 @@
 ---
 name: hours-log-work-session
 description: >-
-  Open a Bob Fleet hours webhook entry when a task starts and close it on DONE/GIVEUP; heartbeat on long tasks; idempotency_key on retry; always append {customer}/{project}/log.md for billing evidence.
+  Open a Bob Fleet hours webhook entry when a task starts and close it on DONE/GIVEUP; heartbeat on long tasks; idempotency_key on retry; always append a narrative to {customer}/{project}/log.md (no hours in the repo).
   Use when /hours-start, /hours-stop, log-work-session or matching hours webhook workflow.
 ---
 
@@ -26,8 +26,10 @@ skill.
 ## CAST IRON - project work log
 
 Always append actual work done to `{customer}/{project}/log.md` (customer-repo
-layout: `{project}/log.md`). **Create if missing.** Billing evidence - not
-optional. No secrets.
+layout: `{project}/log.md`). **Create if missing.** Narrative only - not
+optional. No secrets. Hours themselves live only in the Bob hours webhook:
+never write hours, durations, hours entry ids, `hours.json` or other hours
+files into a customer repo.
 
 ## Inputs (canonical POST body fields)
 
@@ -89,4 +91,4 @@ The server returns `status: closed` and derives `duration_minutes`. `auto_closed
 
 - Every ACKed job has exactly one entry, closed at DONE/GIVEUP.
 - Retries did not create duplicates (same `idempotency_key`).
-- Project `log.md` updated for billing queries.
+- Project `log.md` updated with the work narrative (no hours in it).

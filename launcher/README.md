@@ -163,7 +163,7 @@ PriorityAgent.exe --uninstall
      loud red warning and relaunches the **same chosen CLI** (Grok: `grok --resume <id>`;
      Cursor/OpenCode: that CLI's argv, never a hardcoded `grok.exe`) until the closed
      entry matches, or the operator types `SKIP` (logged).
-   - `log.md` stays narrative evidence. It is not the hours store. The check does not read a git hours ref.
+   - `log.md` stays a work narrative with no hours in it. It is not the hours store. The check does not read a git hours ref.
 
 Logs go to `%LOCALAPPDATA%\PriorityAgent\logs`. Per-session `launch.json` and the rendered rules go to `...\sessions`.
 
@@ -224,6 +224,8 @@ after every client session.
     bookings and Simon approves them. The agent does not post Priority.
   - `launcher/hours-template.md` is a legacy markdown table. It is not the hours store and it is
     not the customer-repo template. Use `launcher/customer-setup` for new repos.
+  - Hours are never stored or reported in a customer repo: no `hours.json`, hours files or
+    folders, and no hours in `log.md`. The Bob hours webhook is the only hours store.
 
 ## Use
 

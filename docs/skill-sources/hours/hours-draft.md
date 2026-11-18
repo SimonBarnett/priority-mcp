@@ -35,7 +35,7 @@ auto-post to Priority.
 - Print or store OData passwords or other secrets.
 - Guess WBS when unclassified.
 - Skip `{customer}/{project}/log.md` (or `{project}/log.md`) when hours were
-  recorded — CAST IRON billing evidence; create if missing
+  recorded — CAST IRON work narrative (no hours in the repo); create if missing
   (`hours-log-work-session`).
 
 ## Done
