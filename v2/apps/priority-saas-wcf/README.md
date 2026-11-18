@@ -118,7 +118,7 @@ A 9th read or a write verb (for example form new) exits 2 before login. One logi
 
 `--fields-file` on `form set` is UTF-8 JSON (does not change `form save`). A leading UTF-8 BOM exits 2 `bom_refused`. Larger than 1 MiB exits 2 `fields_file_too_large`. The client does not log the file body.
 
-`form subform --set --fields-file` field-updates the child only (`allowLive: true` required). Bare `form subform` (no `--set`) stays read-only.
+`form subform --set --fields-file` field-updates the child only (`allowLive: true` required). Bare `form subform` (no `--set`) stays read-only. For both read and `--set`, `--filter` / `request.filter` is applied on the **parent** (same shape as `form rows`) before `startSubForm`, then the first matching parent row is activated (FR #697) — required for EPROG→PROG so you do not read the first unfiltered catalog row.
 
 Writes (`form set` / `form save` / `form new` / `form action` / `form subform --set`) require `allowLive: true` on the row (and operator approval). `form new` with `allowLive` false exits 2 with `reason: live_refused` before login.
 `form action --form <ENAME> --name <activation>` runs one named activation (e.g. SAVE) and returns the
