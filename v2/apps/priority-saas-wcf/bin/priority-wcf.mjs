@@ -19,6 +19,7 @@ import {
   formStartSubForm,
   formColumnsMeta,
   formSubformSetFields,
+  positionParentForSubform,
   applySearchThenGetRows,
   formRunAction,
   formInsertRow,
@@ -157,8 +158,9 @@ Form verbs (one screen):
   form start   --instance <id> --form <ENAME>
   form set     --instance <id> --form <ENAME> --fields '{...}' [--fields-file <path>] [--filter ...]
   form save    --instance <id> --form <ENAME> --fields '{...}' [--filter ...]
-  form subform --instance <id> --form <PARENT> --subform <CHILD> [--rows]
-  form subform --instance <id> --form <PARENT> --subform <CHILD> --set --fields-file <path>
+  form subform --instance <id> --form <PARENT> --subform <CHILD> [--rows] [--filter JSON | --request filter.json]
+  form subform --instance <id> --form <PARENT> --subform <CHILD> --set --fields-file <path> [--filter JSON]
+  Parent --filter / request.filter is applied before startSubForm (FR #697; same as form rows).
 
 Writes need allowLive: true. Never invent ENAME. Never log tokens.
 `,
@@ -719,6 +721,9 @@ async function cmdForm(sub) {
         if (sub === 'subform') {
           const childName = reqString('subform', '--subform');
           if (!childName) return fail('subform_required', { need: '--subform <ENAME> or request.subform' });
+          // FR #697: same parent filter as form rows before startSubForm.
+          const filterRaw = reqRawJson('filter', '--filter');
+          const parentFilter = parseFilter(filterRaw);
 
           // FR #400: --set writes the child via fields-file (allowLive gated by write flag).
           if (hasFlag('--set')) {
@@ -739,12 +744,23 @@ async function cmdForm(sub) {
               });
             }
             form = await formStart(session.priority, formName, instance.company, { messages });
+            const positioned = await positionParentForSubform(form, parentFilter);
+            if (!positioned.ok) {
+              await safeEnd(form);
+              return fail(positioned.reason || 'filter_unsupported', {
+                parent: formName,
+                subform: childName,
+                ...positioned,
+              }, 2);
+            }
             const { child, set } = await formSubformSetFields(form, childName, fields, { messages });
             dump('subform-set.json', {
               parent: formName,
               child: childName,
               fields: Object.keys(fields),
               set,
+              searchCalls: positioned.searchCalls,
+              parentRows: positioned.parentRows,
               messages,
             });
             await safeEnd(child);
@@ -756,15 +772,33 @@ async function cmdForm(sub) {
               subform: childName,
               fields: Object.keys(fields),
               set,
+              searchCalls: positioned.searchCalls,
+              parentRows: positioned.parentRows,
               messages,
             });
           }
 
           form = await formStart(session.priority, formName, instance.company, { messages });
+          const positioned = await positionParentForSubform(form, parentFilter);
+          if (!positioned.ok) {
+            await safeEnd(form);
+            return fail(positioned.reason || 'filter_unsupported', {
+              parent: formName,
+              subform: childName,
+              ...positioned,
+            }, 2);
+          }
           const child = await formStartSubForm(form, childName, { messages });
           let rows = null;
           if (hasFlag('--rows')) rows = await formGetRows(child, Number(arg('--from', '1')) || 1);
-          dump('subform.json', { parent: formName, child: childName, rows, messages });
+          dump('subform.json', {
+            parent: formName,
+            child: childName,
+            rows,
+            searchCalls: positioned.searchCalls,
+            parentRows: positioned.parentRows,
+            messages,
+          });
           await safeEnd(child);
           await safeEnd(form);
           return ok({
@@ -773,6 +807,8 @@ async function cmdForm(sub) {
             parent: formName,
             subform: childName,
             rows,
+            searchCalls: positioned.searchCalls,
+            parentRows: positioned.parentRows,
             messages,
           });
         }
