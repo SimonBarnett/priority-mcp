@@ -313,10 +313,19 @@ export async function runPrepare(session, instance, kind, name, opts = {}) {
   }
 
   const preparedClaim = Boolean(gate.preparedClaim);
+  const gateStatus = String(gate?.status || '');
+  // FR #698: surface OData dictionary miss separately so agents do not re-prep forever.
+  let reason;
+  if (walkOk && !preparedClaim && /^odata_http_/.test(gateStatus)) {
+    reason = 'prepare_gate_unreachable';
+  } else if (walkOk && !preparedClaim && gateStatus === 'skipped') {
+    reason = 'prepare_gate_skipped';
+  }
   return {
     ok: walkOk && preparedClaim,
     walkOk,
     preparedClaim,
+    ...(reason ? { reason, message: gate.message, hint: gate.hint } : {}),
     stage: walkOk ? 'walked' : 'incomplete',
     kind: defaults.kind,
     name,
