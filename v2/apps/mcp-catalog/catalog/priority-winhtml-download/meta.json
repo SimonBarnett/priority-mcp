@@ -1,0 +1,6 @@
+{
+  "name": "priority-winhtml-download",
+  "title": "WINHTML output paths + DOWNLOAD",
+  "description": "WINHTML last-arg paths on SaaS vs on-prem; prefer ../../system/mail/<file> when DOWNLOAD or MAILMSG follows; PDF/MHTML/HTML vs Excel.",
+  "version": "1.0.0"
+}

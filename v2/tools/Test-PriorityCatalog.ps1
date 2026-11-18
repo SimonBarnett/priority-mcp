@@ -80,6 +80,7 @@ $expected = @(
     'priority-mcp-setup',
     'priority-saas-oidc-login',
     'priority-saas-wcf',
+    'priority-winhtml-download',
     'priority-mcp-discovery',
     'priority-mcp-forms',
     'priority-mcp-procedures',

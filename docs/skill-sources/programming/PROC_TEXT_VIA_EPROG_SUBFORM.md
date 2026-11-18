@@ -23,4 +23,4 @@ Do **not** invent subform names. If `startSubForm('PROG')` fails with “Can't f
 ## Related
 
 - `priority-saas-wcf` `proc text` (EXEC header TEXT only).
-- WINHTML file output paths: prefer Priority-root relative paths; for user DOWNLOAD / mail delivery, `../../system/mail/<file>` is the usual attachable location (see SDK document-execution examples using `../../` and mail folders under `system/mail`).
+- WINHTML file output paths: prefer Priority-root relative paths; for user DOWNLOAD / mail delivery, `../../system/mail/<file>` is the usual attachable location — see **priority-winhtml-download** / `WINHTML_DOWNLOAD_PATHS.md`.
