@@ -31,6 +31,7 @@ After a successful install, `postInstall.formsUnprepared[]` lists `TAKESINGLEENT
 8. Never run when `allowLive` is false and the row looks live/PRI.
 9. `shell` is a path on the runner / build set, not “latest file in system\upgrades”.
 10. One `.sh` per call. No directory install.
+11. **Encoding (FR #688):** Install Upgrade expects the Prepare Upgrade binary — typically **UTF-16 LE with BOM**. Do not install a UTF-8 `.sh.txt` review dump. Prefer verifying **SHA-256** of the binary matches the packaged shell before WCF.
 
 ## Allowlist (user fills this)
 

@@ -27,6 +27,7 @@ This is **not** form prep and **not** install. Do not call `install_shell` from 
 6. If `instances.json` is missing or empty: **stop** and tell the user to fill it.
 7. Never run when `allowLive` is false and the row looks live/PRI.
 8. Never create Version Revisions or fixture entities.
+9. **Encoding (FR #688):** Prepare Upgrade `.sh` output is typically **UTF-16 LE with BOM** (bytes `FF FE`). Treat that file as the install binary. Verify **SHA-256** of the binary before shipping/harvest. Decode as UTF-16 to review trigger text. Keep a separate UTF-8 `.sh.txt` review dump — never feed the UTF-8 dump to Install Upgrade.
 
 ## Allowlist (user fills this)
 
