@@ -190,6 +190,42 @@ export async function formStartSubForm(parent, ename, { messages = [] } = {}) {
 }
 
 /**
+ * FR #697: apply the same parent filter/search used by form rows, then activate
+ * the first matching parent row before startSubForm (so EPROG->PROG is not the
+ * first unfiltered catalog row).
+ */
+export async function positionParentForSubform(form, filter, { getRows, fromRow = 1 } = {}) {
+  const fetch = getRows || formGetRows;
+  let searchCalls = 0;
+  if (filter) {
+    if (typeof form.setSearchFilter !== 'function') {
+      return {
+        ok: false,
+        reason: 'filter_unsupported',
+        searchCalls: 0,
+        parentRows: 0,
+        activeIdx: null,
+      };
+    }
+    await form.setSearchFilter(filter);
+    searchCalls += 1;
+  }
+  const got = await fetch(form, fromRow);
+  const rows = Array.isArray(got?.rows) ? got.rows : [];
+  let activeIdx = null;
+  if (rows.length && typeof form.setActiveRow === 'function' && rows[0]._idx != null) {
+    activeIdx = Number(rows[0]._idx);
+    await form.setActiveRow(activeIdx);
+  }
+  return {
+    ok: true,
+    searchCalls,
+    parentRows: rows.length,
+    activeIdx,
+  };
+}
+
+/**
  * FR #400 / FR-018: open child subform and fieldUpdate on the child only.
  */
 export async function formSubformSetFields(parent, childName, fields, { messages = [] } = {}) {

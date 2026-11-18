@@ -19,6 +19,7 @@ import {
   formStartSubForm,
   formColumnsMeta,
   formSubformSetFields,
+  positionParentForSubform,
   applySearchThenGetRows,
   formRunAction,
   formInsertRow,
@@ -27,7 +28,7 @@ import {
 } from '../lib/form.mjs';
 import { runPrepare } from '../lib/prepare.mjs';
 import { runProcStart, runProcContinue } from '../lib/proc.mjs';
-import { loadProcTextFile, writeProcTextViaExecForm, readProcTextViaExecForm } from '../lib/proc-text.mjs';
+import { loadProcTextFile, writeProcTextViaExecForm, readProcText } from '../lib/proc-text.mjs';
 import { loadInputsFile } from '../lib/inputs-file.mjs';
 import {
   defaultInterfacePrepPath,
@@ -157,8 +158,9 @@ Form verbs (one screen):
   form start   --instance <id> --form <ENAME>
   form set     --instance <id> --form <ENAME> --fields '{...}' [--fields-file <path>] [--filter ...]
   form save    --instance <id> --form <ENAME> --fields '{...}' [--filter ...]
-  form subform --instance <id> --form <PARENT> --subform <CHILD> [--rows]
-  form subform --instance <id> --form <PARENT> --subform <CHILD> --set --fields-file <path>
+  form subform --instance <id> --form <PARENT> --subform <CHILD> [--rows] [--filter JSON | --request filter.json]
+  form subform --instance <id> --form <PARENT> --subform <CHILD> --set --fields-file <path> [--filter JSON]
+  Parent --filter / request.filter is applied before startSubForm (FR #697; same as form rows).
 
 Writes need allowLive: true. Never invent ENAME. Never log tokens.
 `,
@@ -179,7 +181,8 @@ prepare interface reads config/interface-prep.json; empty/missing proc => interf
   proc text     --instance <id> --name <ENAME>
   proc text set --instance <id> --name <ENAME> --file <path>
 
-proc text is read-only (EXEC TEXT); allowLive not required. Missing/empty body -> proc_text_missing exit 2.
+proc text is read-only (EXEC TEXT, then EPROG->PROG->PROGTEXT if empty; FR #696); allowLive not required.
+Missing after both paths -> proc_text_missing exit 2. Steps returned when EPROG path is used.
 Continue answers a needs_input snapshot. Missing --from exits 2 before login. Does not auto-pick.
 proc text set writes --file through the EXEC form (allowLive). Does not prepare.
 `,
@@ -381,12 +384,18 @@ async function executeBatchRead({ instance, session, dump, tokenSource, accessTo
   }
   if (read.verb === 'proc.text') {
     const messages = [];
-    const result = await readProcTextViaExecForm(session, instance, read.name, { messages });
+    const result = await readProcText(session, instance, read.name, { messages });
     if (!result.ok) return { ok: false, reason: result.reason || 'proc_text_missing', read };
-    return {
-      ok: true,
-      result: { action: 'proc.text', name: result.name, body: result.body, tokenSource },
+    const out = {
+      action: 'proc.text',
+      name: result.name,
+      body: result.body,
+      form: result.form,
+      source: result.source,
+      tokenSource,
     };
+    if (Array.isArray(result.steps)) out.steps = result.steps;
+    return { ok: true, result: out };
   }
   dump('batch-unknown.json', read);
   return { ok: false, reason: 'batch_write_refused', read };
@@ -712,6 +721,9 @@ async function cmdForm(sub) {
         if (sub === 'subform') {
           const childName = reqString('subform', '--subform');
           if (!childName) return fail('subform_required', { need: '--subform <ENAME> or request.subform' });
+          // FR #697: same parent filter as form rows before startSubForm.
+          const filterRaw = reqRawJson('filter', '--filter');
+          const parentFilter = parseFilter(filterRaw);
 
           // FR #400: --set writes the child via fields-file (allowLive gated by write flag).
           if (hasFlag('--set')) {
@@ -732,12 +744,23 @@ async function cmdForm(sub) {
               });
             }
             form = await formStart(session.priority, formName, instance.company, { messages });
+            const positioned = await positionParentForSubform(form, parentFilter);
+            if (!positioned.ok) {
+              await safeEnd(form);
+              return fail(positioned.reason || 'filter_unsupported', {
+                parent: formName,
+                subform: childName,
+                ...positioned,
+              }, 2);
+            }
             const { child, set } = await formSubformSetFields(form, childName, fields, { messages });
             dump('subform-set.json', {
               parent: formName,
               child: childName,
               fields: Object.keys(fields),
               set,
+              searchCalls: positioned.searchCalls,
+              parentRows: positioned.parentRows,
               messages,
             });
             await safeEnd(child);
@@ -749,15 +772,33 @@ async function cmdForm(sub) {
               subform: childName,
               fields: Object.keys(fields),
               set,
+              searchCalls: positioned.searchCalls,
+              parentRows: positioned.parentRows,
               messages,
             });
           }
 
           form = await formStart(session.priority, formName, instance.company, { messages });
+          const positioned = await positionParentForSubform(form, parentFilter);
+          if (!positioned.ok) {
+            await safeEnd(form);
+            return fail(positioned.reason || 'filter_unsupported', {
+              parent: formName,
+              subform: childName,
+              ...positioned,
+            }, 2);
+          }
           const child = await formStartSubForm(form, childName, { messages });
           let rows = null;
           if (hasFlag('--rows')) rows = await formGetRows(child, Number(arg('--from', '1')) || 1);
-          dump('subform.json', { parent: formName, child: childName, rows, messages });
+          dump('subform.json', {
+            parent: formName,
+            child: childName,
+            rows,
+            searchCalls: positioned.searchCalls,
+            parentRows: positioned.parentRows,
+            messages,
+          });
           await safeEnd(child);
           await safeEnd(form);
           return ok({
@@ -766,6 +807,8 @@ async function cmdForm(sub) {
             parent: formName,
             subform: childName,
             rows,
+            searchCalls: positioned.searchCalls,
+            parentRows: positioned.parentRows,
             messages,
           });
         }
@@ -997,8 +1040,16 @@ async function cmdProcTextRead() {
   return withSession(
     async ({ instance, session, dump, tokenSource }) => {
       const messages = [];
-      const result = await readProcTextViaExecForm(session, instance, name, { messages });
-      dump('proc-text.json', { name, ok: result.ok, reason: result.reason, messages });
+      const result = await readProcText(session, instance, name, { messages });
+      dump('proc-text.json', {
+        name,
+        ok: result.ok,
+        reason: result.reason,
+        source: result.source,
+        form: result.form,
+        stepCount: Array.isArray(result.steps) ? result.steps.length : 0,
+        messages,
+      });
       if (!result.ok) {
         return fail(result.reason || 'proc_text_missing', {
           action: 'proc.text',
@@ -1007,13 +1058,17 @@ async function cmdProcTextRead() {
           name,
         }, 2);
       }
-      return ok({
+      const payload = {
         action: 'proc.text',
         instanceId: instance.id,
         tokenSource,
         name: result.name,
         body: result.body,
-      });
+        form: result.form,
+        source: result.source,
+      };
+      if (Array.isArray(result.steps)) payload.steps = result.steps;
+      return ok(payload);
     },
     { write: false },
   );
