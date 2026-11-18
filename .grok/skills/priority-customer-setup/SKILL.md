@@ -29,6 +29,21 @@ must also avoid generating per-customer policy copies. Resolve conflicting
 legacy reporting instructions by replacing them with a canonical reference,
 not a fresh embedded policy. Preserve unrelated customer-specific constraints.
 
+## Hours: Bob hours webhook only (never the customer repo)
+Hours are ALWAYS reported through the Bob hours webhook
+`https://bob.ntsa.uk/bob/v1/hours` ([contract, hours webhook FR #3450](https://github.com/SimonBarnett/bobiverse/blob/main/jeeves/docs/webhooks.md#hours-webhook-fr-3450--no-secret))
+under the canonical [agent rules](https://github.com/SimonBarnett/priority-mcp/blob/main/launcher/agent-rules.md).
+They are NEVER stored or reported in a customer repo.
+- Never seed or keep adding `hours.json`, hours files, hours folders, hours
+  tables, hours entry ids, or "report hours here" instructions in a customer
+  repo, its README, AGENTS.md, harvest book, tests or work folders.
+- The only hours text a customer repo carries is the `AGENTS.snippet.md`
+  pointer to the webhook contract and the canonical rules.
+- Booking project and WBS stay as customer metadata in the work folder
+  `project.md` (and `company.md`). Work-folder `log.md` is narrative only.
+- When migrating a legacy repo that has repo hours files or instructions,
+  list them for Si; remove them only on his ask, on a branch and review PR.
+
 Hours reports use human-equivalent time and a readable narrative. They do not
 use internal numbering. The session user is the Priority Agent runtime session
 context; it is not hard-coded in the customer repo or in this skill.
@@ -61,7 +76,8 @@ approved shared rule version.
    new repository needs explicit authorization. Repository code investigation
    and changes belong on a branch and review PR. No main push, merge,
    deployment or install without separate authorization.
-6. Maintain required customer artifacts from `launcher/customer-setup`:
+6. Maintain required customer artifacts from `launcher/customer-setup` (and
+   nothing hours-related; see "Hours: Bob hours webhook only"):
    `AGENTS.md` (from `AGENTS.snippet.md`), README, `VISION.md`, secret-free
    `connections.md`, root `company.md`, and per-work-item project
    documentation, with minimal shared-rule and skill-book pointers.

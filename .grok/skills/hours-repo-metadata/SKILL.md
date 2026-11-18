@@ -33,7 +33,9 @@ Priority customer/project record and WBS confirmed by the drafter or human.
   id) and `wbs`. Those are different fields from the folder name. Do not replace
   either with the other. Leave a value blank until a human confirms it.
 - `<SCxxxxxx-or-SOxxxxxx>/log.md` is the work-log narrative, not the hours store.
-  Create it if missing when hours are recorded (`hours-log-work-session`).
+  Create it if missing (`hours-log-work-session`). It carries no hours.
+- Never create `hours.json`, hours files or hours folders in a customer repo.
+  Hours live only in the Bob hours webhook.
 - Do not rename an existing folder onto a guessed SC/SO. If the authoritative
   number is not evidenced, leave the folder unchanged.
 

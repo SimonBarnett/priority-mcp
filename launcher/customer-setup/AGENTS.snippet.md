@@ -1,7 +1,11 @@
 ## Hours and reporting
 
-Do not copy hours rules into this repo. PriorityAgent loads them from
-SimonBarnett/priority-mcp `launcher/agent-rules.md`.
+Hours are reported only through the Bob hours webhook
+`https://bob.ntsa.uk/bob/v1/hours` (contract: SimonBarnett/bobiverse
+`jeeves/docs/webhooks.md`, [hours webhook FR #3450](https://github.com/SimonBarnett/bobiverse/blob/main/jeeves/docs/webhooks.md#hours-webhook-fr-3450--no-secret)), following
+SimonBarnett/priority-mcp `launcher/agent-rules.md`. PriorityAgent loads
+those rules. Never store or report hours in this repo: no hours files,
+folders, tables or hours entry ids.
 
 ## This repo's data
 

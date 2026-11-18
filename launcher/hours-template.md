@@ -1,5 +1,6 @@
 # LEGACY. Not the hours store.
 # Do not copy this file into a customer repo. Do not push it to a git hours ref.
+# Customer repos never hold hours files; hours live only in the Bob hours webhook.
 # Hours are the bob.ntsa.uk webhook. See launcher/customer-setup and hours-log-work-session.
 # The table below is historical shape only. The project column here was a Medatech
 # booking id. That id is not the webhook project field and not the SC/SO folder name.

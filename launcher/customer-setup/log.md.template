@@ -1,6 +1,7 @@
 # Work log
 
-Narrative billing evidence for this SC or SO folder. This file is not the hours
-database. Append dated notes after a webhook entry is closed. Include the
-returned hours entry id when a readback has shown it. Do not put secrets here.
-Do not record a fictitious billable report.
+Narrative of the work done in this SC or SO folder. This file is not the hours
+store: hours are reported only through the Bob hours webhook
+(https://bob.ntsa.uk/bob/v1/hours, SimonBarnett/bobiverse
+`jeeves/docs/webhooks.md`). Do not write hours, durations or hours entry ids
+here. Do not put secrets here.

@@ -78,13 +78,17 @@ until the user allowlists an instance for this session.
    `harvest-priority-skills` / intake above (never push `main` for harvest).
    Product filings stay on `SimonBarnett/priority-mcp`; fleet/Bob/IRC defects
    go to `SimonBarnett/bobiverse`.
-7. **Project work log (billing evidence):** whenever you record hours (Bob
-   webhook open/close or closed-in-one-POST, or Priority timesheet draft/post),
-   append a summary of **actual work done** to `{customer}/{project}/log.md`
-   (in a customer repo whose project lives at the root, use `{project}/log.md`).
-   **Create the file if missing.** Dated entries with enough detail for a later
-   billing query (what shipped, PRs/issues, hours day, Bob hours entry id).
-   Never put secrets in `log.md`. Skill: `hours-log-work-session`.
+7. **Hours + project work log:** hours are ALWAYS reported through the Bob hours
+   webhook (`https://bob.ntsa.uk/bob/v1/hours`; contract in bobiverse
+   `jeeves/docs/webhooks.md`, FR #3450) under `launcher/agent-rules.md`. They are
+   NEVER stored or reported in a customer repo (`hours.json`, hours files/folders,
+   durations, or hours entry ids). Whenever you record hours, also append a
+   narrative of **actual work done** to `{customer}/{project}/log.md` (or
+   `{project}/log.md` when the project lives at the customer-repo root). **Create
+   the file if missing.** Dated narrative only (what shipped, PRs/issues) — no
+   hours, durations, or hours entry ids in the file; put the entry id in the chat
+   summary only. Never put secrets in `log.md`. Skills: `hours-log-work-session`,
+   `priority-customer-setup` (1.1.0+).
 
 ## Merge on green (FR #247)
 

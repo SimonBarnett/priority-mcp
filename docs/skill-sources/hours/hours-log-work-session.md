@@ -15,7 +15,7 @@ Open a time entry when a task starts and close it when it ends so the hours
 drafter has source material. Entries are **not** posted to Priority by this
 skill.
 
-## CAST IRON - project work log (billing evidence)
+## CAST IRON - project work log (narrative, no hours)
 
 Whenever you record hours (open/close **or** closed-in-one-POST), also append a
 human-readable summary of **actual work done** to the project work log:
@@ -25,9 +25,10 @@ human-readable summary of **actual work done** to the project work log:
 | Customer repo with an SC/SO folder | `{SCxxxxxx-or-SOxxxxxx}/log.md` |
 | Multi-folder layout | `{customer}/{SCxxxxxx-or-SOxxxxxx}/log.md` |
 
-**Create the file if it is missing.** Dated entries; enough detail for a later
-billing query (what shipped, PRs/issues, hours day, Bob hours entry id if known).
-Never put secrets in `log.md`.
+**Create the file if it is missing.** Dated entries describing what shipped
+(PRs/issues). Do not write hours, durations or Bob hours entry ids into
+`log.md` or any other customer-repo file: hours live only in the Bob hours
+webhook. Never put secrets in `log.md`.
 
 This is mandatory alongside the webhook - the webhook alone is not billing
 evidence.
