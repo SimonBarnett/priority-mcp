@@ -197,6 +197,6 @@ npm test
 - On-prem password formprep: `src/Prepare-NamedForm.ps1` (unchanged)
 - airc Priority verbs: bobiverse `airc/priority-worker` (fleet console; CredMan on-prem)
 
-### proc text (FR #409)
+### proc text (FR #409 / FR #696)
 
-`proc text --instance <id> --name <ENAME>` reads EXEC `TEXT` as `{name, body}` (read-only; `allowLive` not required). Missing or empty body exits 2 with `proc_text_missing`. Write is FR-028 (`proc text set`).
+`proc text --instance <id> --name <ENAME>` reads EXEC `TEXT` as `{name, body}` (read-only; `allowLive` not required). When EXEC `TEXT` is empty or missing, it falls back to **EPROG → PROG → PROGTEXT** and returns concatenated `body` plus structured `steps` (`POS`, `ENAME`, `TEXT`). That path does not require Form Prep of top-level `PROG`. Still missing after both paths exits 2 with `proc_text_missing`. Write is FR-028 (`proc text set`).

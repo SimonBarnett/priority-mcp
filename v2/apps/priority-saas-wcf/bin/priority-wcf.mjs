@@ -27,7 +27,7 @@ import {
 } from '../lib/form.mjs';
 import { runPrepare } from '../lib/prepare.mjs';
 import { runProcStart, runProcContinue } from '../lib/proc.mjs';
-import { loadProcTextFile, writeProcTextViaExecForm, readProcTextViaExecForm } from '../lib/proc-text.mjs';
+import { loadProcTextFile, writeProcTextViaExecForm, readProcText } from '../lib/proc-text.mjs';
 import { loadInputsFile } from '../lib/inputs-file.mjs';
 import {
   defaultInterfacePrepPath,
@@ -179,7 +179,8 @@ prepare interface reads config/interface-prep.json; empty/missing proc => interf
   proc text     --instance <id> --name <ENAME>
   proc text set --instance <id> --name <ENAME> --file <path>
 
-proc text is read-only (EXEC TEXT); allowLive not required. Missing/empty body -> proc_text_missing exit 2.
+proc text is read-only (EXEC TEXT, then EPROG->PROG->PROGTEXT if empty; FR #696); allowLive not required.
+Missing after both paths -> proc_text_missing exit 2. Steps returned when EPROG path is used.
 Continue answers a needs_input snapshot. Missing --from exits 2 before login. Does not auto-pick.
 proc text set writes --file through the EXEC form (allowLive). Does not prepare.
 `,
@@ -381,12 +382,18 @@ async function executeBatchRead({ instance, session, dump, tokenSource, accessTo
   }
   if (read.verb === 'proc.text') {
     const messages = [];
-    const result = await readProcTextViaExecForm(session, instance, read.name, { messages });
+    const result = await readProcText(session, instance, read.name, { messages });
     if (!result.ok) return { ok: false, reason: result.reason || 'proc_text_missing', read };
-    return {
-      ok: true,
-      result: { action: 'proc.text', name: result.name, body: result.body, tokenSource },
+    const out = {
+      action: 'proc.text',
+      name: result.name,
+      body: result.body,
+      form: result.form,
+      source: result.source,
+      tokenSource,
     };
+    if (Array.isArray(result.steps)) out.steps = result.steps;
+    return { ok: true, result: out };
   }
   dump('batch-unknown.json', read);
   return { ok: false, reason: 'batch_write_refused', read };
@@ -997,8 +1004,16 @@ async function cmdProcTextRead() {
   return withSession(
     async ({ instance, session, dump, tokenSource }) => {
       const messages = [];
-      const result = await readProcTextViaExecForm(session, instance, name, { messages });
-      dump('proc-text.json', { name, ok: result.ok, reason: result.reason, messages });
+      const result = await readProcText(session, instance, name, { messages });
+      dump('proc-text.json', {
+        name,
+        ok: result.ok,
+        reason: result.reason,
+        source: result.source,
+        form: result.form,
+        stepCount: Array.isArray(result.steps) ? result.steps.length : 0,
+        messages,
+      });
       if (!result.ok) {
         return fail(result.reason || 'proc_text_missing', {
           action: 'proc.text',
@@ -1007,13 +1022,17 @@ async function cmdProcTextRead() {
           name,
         }, 2);
       }
-      return ok({
+      const payload = {
         action: 'proc.text',
         instanceId: instance.id,
         tokenSource,
         name: result.name,
         body: result.body,
-      });
+        form: result.form,
+        source: result.source,
+      };
+      if (Array.isArray(result.steps)) payload.steps = result.steps;
+      return ok(payload);
     },
     { write: false },
   );
