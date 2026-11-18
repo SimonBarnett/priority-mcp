@@ -240,3 +240,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - Read procedure SQLI via EPROG->PROG->PROGTEXT when top-level PROG is unprepared; WINHTML output under ../../ may need system/mail for DOWNLOAD on SaaS
 - When SaaS prepare walkOk is true but OData prep entity 404s, surface prepare_gate_unreachable with a hint; never treat walk success as preparedClaim; offer odataPrepFallbacks.
 - When whoami ok gains rememberWhoami path (FR #384), refresh mrb430 pin to return ok({ userLogin, source, path }); do not strip path from the CLI.
+- form subform must apply --filter / request.filter on the parent and activate the first matching row before startSubForm (FR #697).
