@@ -243,3 +243,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - form subform must apply --filter / request.filter on the parent and activate the first matching row before startSubForm (FR #697).
 - A classic FORMCLTRIGTEXT FORMAT ADDTO probe must be one TEXTLINE of at most 68 characters and must SELECT from DUMMY. Split FORMAT or a missing FROM fails Form Prep.
 - When creating Priority procedures via SQL, keep ENAME <= 20 and TRIGMSG.MESSAGE <= 56; confirm explode child column (KEY2 vs KEY3) against live data before cost-split includes.
+- Gate Procedure Prep on UPD+.prp; PREPMSG Info URLs may be Errors Reports; Session0 WINRUN form prep fails --- use EFORM SDK; prefer MIN(PART) loop over LINK ORIG/EOF on Priority 24
