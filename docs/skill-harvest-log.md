@@ -1,5 +1,6 @@
 # Skill harvest log
 
+- 2026-11-19: `priority-format-addto-debug` — form trigger debug with `SELECT 'tag',:$.COL FROM DUMMY FORMAT ADDTO '../../tmp/s.txt';` on one TEXTLINE; classic `FORMCLTRIGTEXT.TEXT` nvarchar(68); chronological wipe proof around POST/`#INCLUDE`. Authority `FORMAT_ADDTO_DUMMY_DEBUG.md`. Supersedes thin intake drafts #718/#719/#720 (intake-only markdown). Proven on warehouse-transfer LOCNAME wipe (customer work; generic syntax only here).
 - 2026-11-11: `priority-create-table` — WINDBI add column is `FOR TABLE <T> INSERT` (not `CHANGE TABLE … ADD`); table and column titles ≤ 20 characters. Authority in `CREATE_TABLE.md` §5–§6 and `DICTIONARY_SQL.md`.
 - 2026-11-07: `priority-service-desk-shipping-site-vat`. SC263171 order VAT followed the shipping site. Customer confirmed the site correction. No tax code stored. Posted orders are not recalculated by this change.
 - 2026-11-07: `priority-service-desk-procedure-loop-desktop-tile`. SC263369 step 10 set GO to 10. Prefixed copy and menu replacement were not enough until the customer replaced the old desktop tile on 2026-11-04. Do not edit the standard procedure in place.

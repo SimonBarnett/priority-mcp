@@ -7,6 +7,7 @@ FR: `docs/feature-request-eshbel-priority-programming-harvest-2026-09-24.md`
 | File | Catalog skill |
 |------|----------------|
 | PROCEDURE_STYLE.md | priority-procedure-style |
+| FORMAT_ADDTO_DUMMY_DEBUG.md | priority-format-addto-debug | Form trigger debug: FORMAT ADDTO FROM DUMMY on one TEXTLINE; classic nvarchar(68); chronological wipe proof |
 | SQL_UDATE_USER.md | priority-sql-udate-user |
 | FORMPREP_SHADOW_TABLES.md | priority-formprep-shadow-tables |
 | RECALC_CONCURRENCY.md | priority-recalc-concurrency |

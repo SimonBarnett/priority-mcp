@@ -1,0 +1,6 @@
+{
+  "name": "priority-format-addto-debug",
+  "title": "FORMAT ADDTO FROM DUMMY debug",
+  "description": "Form trigger debug: SELECT tag,:$.COL FROM DUMMY FORMAT ADDTO on one TEXTLINE; classic nvarchar(68); chronological wipe location.",
+  "version": "1.0.0"
+}
