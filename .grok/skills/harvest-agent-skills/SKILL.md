@@ -242,3 +242,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - When whoami ok gains rememberWhoami path (FR #384), refresh mrb430 pin to return ok({ userLogin, source, path }); do not strip path from the CLI.
 - form subform must apply --filter / request.filter on the parent and activate the first matching row before startSubForm (FR #697).
 - A classic FORMCLTRIGTEXT FORMAT ADDTO probe must be one TEXTLINE of at most 68 characters and must SELECT from DUMMY. Split FORMAT or a missing FROM fails Form Prep.
+- When creating Priority procedures via SQL, keep ENAME <= 20 and TRIGMSG.MESSAGE <= 56; confirm explode child column (KEY2 vs KEY3) against live data before cost-split includes.
