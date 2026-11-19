@@ -223,5 +223,5 @@ Expanded `priority-uat-wcf` (skill-source + catalog meta **1.2.0**) from CE Day 
 2026-11-16 MRB #593/#378: fold system DB FORMCLTRIGTEXT columns + airc sqlcmd limits + never dump connections stdout into harvest-agent-skills.
 
 ## 2026-11-19
-- forms-code/sqli-ambiguous-curdate-nested-max.md — nested MAX(CURDATE) ? SQL 209; two-step :VAR.
+- forms-code/sqli-ambiguous-curdate-nested-max.md - nested MAX(CURDATE) becomes SQL 209; two-step :VAR.
 
