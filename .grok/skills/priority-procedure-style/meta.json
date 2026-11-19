@@ -2,5 +2,5 @@
   "name": "priority-procedure-style",
   "title": "Priority procedure style",
   "description": "SQLI/trigger style: banners, '' vs '\\0' strings, PROGPARAM/:$.NAME, GOTO vs LOOP, report FILE/REPCLMNSA, FORMTRIGTEXT line length.",
-  "version": "1.2.0"
+  "version": "1.2.1"
 }

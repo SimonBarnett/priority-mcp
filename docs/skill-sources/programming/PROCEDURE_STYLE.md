@@ -22,6 +22,19 @@ When editing existing stack triggers, bring headers up to this standard.
 2. Before includes, set `:RUN_BY` to a string naming Form/proc / column / trigger-or-step.
 3. Gate file logs on `:DEBUG = 1` writing to `:DEBUGFILE`.
 
+## FORMAT ADDTO FROM DUMMY (field wipe / chronological probes)
+
+When a form field is silently cleared and site debug includes are unavailable,
+probe with Priority `FORMAT ADDTO` and the **`DUMMY`** table:
+
+```
+SELECT 'tag',:$.LOCNAME FROM DUMMY FORMAT ADDTO '../../tmp/s.txt';
+```
+
+Whole statement on **one** TEXTLINE; classic `TEXT` is nvarchar(68). Split
+SELECT / FORMAT → Form Prep error at `FORMAT`. No `FROM` → Form Prep rejects.
+Full playbook: `FORMAT_ADDTO_DUMMY_DEBUG.md` / **priority-format-addto-debug**.
+
 ## Shared vs dedicated triggers
 
 Overwriting a shared POST-FORM (one TRIG id used by many forms) silently changes siblings. Prefer a **dedicated** TRIG for feature-specific mint/history logic (CE PART long-desc: shared TRIG 1306 replaced with dedicated 3797).
