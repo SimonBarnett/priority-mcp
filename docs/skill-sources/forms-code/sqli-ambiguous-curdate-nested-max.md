@@ -1,4 +1,4 @@
-﻿# SQLI: Ambiguous CURDATE with nested MAX subquery
+# SQLI: Ambiguous CURDATE with nested MAX subquery
 
 ## Symptom
 
