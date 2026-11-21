@@ -30,7 +30,7 @@ Authoring or heavily editing form triggers, SQLI procedures, or #INCLUDE bodies.
 7. **`FORMTRIGTEXT` / `PROGRAMSTEXT` max ~68 chars per line.** Split long SQL; truncated INTO lists break runtime after a clean Prepare.
 8. **Multi-char strings use `''`, not `'\0'`.** `:VAR = '\0'` is a one-char boolean (Y/`\0`). Init and compare work-order / part / status strings with `''`.
 9. **Declare PROGPARAM on every step that reads `:$.NAME`** (INPUT and SQLI). When converting INPUT to plain CHAR params, clear leftover INPUT `PROGRAMSTEXT` (old LINK/ERRMSG).
-10. **`GOTO` forward only; `LOOP` for backward** jumps to an earlier LABEL.
+10. **`GOTO` forward only; `LOOP` for backward** jumps to an earlier LABEL. `LINK PART ORIG` / `GOTO WHERE EOF(PART)` can fail Procedure Prep parse. Walk rows with `SELECT MIN(PART) INTO :PART` and a loop.
 11. **Report work tables:** prefer `T$TABLE` / `REPTABLES` without SQLI `LINK` / report `FILE` PROGPARAM. Orphan FILE params cause the system *file links* message (not your TRIGMSG).
 12. When editing report expressions, clear **`REPCLMNSA.EXPR`** as well as `REPCLMNSTEXT`.
 

@@ -21,7 +21,7 @@ The CE DEV1 pack at repo-root `src\Prepare-NamedForm.ps1` is a separate in-fligh
 2. Never `UPDATE … SET UPD='N'` to fake success.
 3. Never invent `webBaseUrl`, SQL instance, or company. Only ids from the user’s allowlist.
 4. Never log the web password. CredMan only.
-5. One name per call. SDK “successfully completed” is not success.
+5. One name per call. SDK “successfully completed” is not success. `PREPMSG` severity Info can still be an Errors Report HTML URL. Fetch that URL text. SQL-gate `UPD=N` and `LASTPREPDATE`.
 6. If `instances.json` is missing or empty: **stop** and tell the user to fill it. Do not recon-guess live.
 
 ## Allowlist (user fills this)
@@ -29,7 +29,7 @@ The CE DEV1 pack at repo-root `src\Prepare-NamedForm.ps1` is a separate in-fligh
 `%USERPROFILE%\.priority-formprep\instances.json`  
 Override: env `PRIORITY_FORMPREP_INSTANCES`.
 
-Copy `instances.example.json` from `get_runner_files`. Many instances are allowed. Passwords stay in CredMan (`credentialTarget`). `allowLive` defaults false.
+Copy `instances.example.json` from `get_runner_files`. Many instances are allowed. Passwords stay in CredMan (`credentialTarget`). `allowLive` defaults false. A `via=irc` cred persist needs that allowlist row first: write the JSON without secrets, then send the cred. The IIS host on a prep URL may differ from the CUSTCON web URL. Read the site bindings on the box.
 
 ## Loop
 
