@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata = {
   title: 'mcp.ntsa.uk — Priority MCP',
-  description: 'Priority MCP (shared public chrome with bob.ntsa.uk)',
+  description: 'Priority MCP public skill catalog (plan.ntsa.uk document formatting).',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
