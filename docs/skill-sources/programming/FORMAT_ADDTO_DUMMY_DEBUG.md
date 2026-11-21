@@ -82,6 +82,17 @@ Observed on warehouse-transfer forms when From Bin (`LOCNAME`) becomes `0`:
    `:$.LOCNAME` from the balance-row bin with the same `WARHSBAL` filters
    (`BALANCE > 0`, `LOCNAME <> '0'`). Do not bind the form `WAREHOUSES`
    buffer. Form Prep after the dictionary edit.
+6. `SELECT LOCNAME` or `MAX(LOCNAME)` into a stack variable from a join
+   that includes `WAREHOUSES` can still bind the form buffer. Qualifying
+   `WAREHOUSES.LOCNAME` can do the same. `WARHSBAL.LOCNAME` is not a
+   form-language column where bins live on `WAREHOUSES` (unresolved
+   identifier).
+7. A hard-coded `:$.LOCNAME` in that POST can stick until a later
+   `WARHSNAME` or `WARHS` assign, including a CHECK-FIELD that runs the
+   nested POST. CHECK-FIELD alone does not beat that nested POST. Filling
+   lot, quantity, and status without assigning `WARHSNAME` or `WARHS`,
+   then setting From Bin, is the park until a non-buffer path exists.
+   Form Prep after every `FORMCLTRIGTEXT` edit.
 
 ## Cross-links
 
