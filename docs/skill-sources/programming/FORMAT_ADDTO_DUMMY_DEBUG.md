@@ -74,6 +74,14 @@ Observed on warehouse-transfer forms when From Bin (`LOCNAME`) becomes `0`:
    bare `WAREHOUSES.LOCNAME` that binds the **form WAREHOUSES buffer**.
 4. Do **not** use `WHERE WARHS = :$.WARHS` alone after BUF1 when the form
    buffer’s warehouse points at a master row whose bin is `0`.
+5. When one POST-FIELD `SELECT INTO` sets both `:$.WARHSNAME` and
+   `:$.LOCNAME`, filling `WARHSNAME` runs `WAREHOUSES/BUF1`. BUF1 writes
+   the literal `'0'` into `:$.LOCNAME` when that warehouse has a bin named
+   `0` and `LOCNAME` is still empty, which clobbers the stock bin from the
+   same statement. Omit `LOCNAME` from that first `SELECT INTO`. Then set
+   `:$.LOCNAME` from the balance-row bin with the same `WARHSBAL` filters
+   (`BALANCE > 0`, `LOCNAME <> '0'`). Do not bind the form `WAREHOUSES`
+   buffer. Form Prep after the dictionary edit.
 
 ## Cross-links
 
