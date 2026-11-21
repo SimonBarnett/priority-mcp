@@ -26,7 +26,7 @@ Portable path (customer / airc box): same `run-repprep-via-exec.mjs` with `--nam
 2. Never `UPDATE … SET UPD='N'` to fake success.
 3. Never invent `webBaseUrl`, SQL instance, or company. Only ids from the user’s allowlist.
 4. Never log the web password. CredMan or a local cred file outside git only.
-5. One name per call. SDK toast alone is not success.
+5. One name per call. SDK toast alone is not success. `PREPMSG` severity Info can still be an Errors Report HTML URL. Fetch that URL text. Do not treat Info as success when the path is an errors report. SQL-gate `UPD=N` and `.prp` mtime.
 6. If `instances.json` is missing or empty: **stop** and tell the user to fill it.
 7. Do **not** use Named Form Prep (`EFORM` / `FORMPREPDRCT2`) for `TYPE=P` — it returns form-not-found.
 8. `formStart(EXEC)` needs **API Licence** (`USERSB.REST='Y'`) — see **priority-api-licence-wcf**.
