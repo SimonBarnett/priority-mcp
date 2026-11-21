@@ -64,6 +64,7 @@ Applies to **any** SaaS tenant - not one customer.
 | OData Basic 401 with Tabula password | Normal on many SaaS tenants; use Bearer or PAT |
 | OData Bearer **500** empty body | Wrong DNAME and/or API licence - do not keep guessing |
 | checkotp HTTP 435 | OTP already used or session stale; re-run checkPassword |
+| POST `/accounts/login/checkotp` returns 404 | OTP endpoint is `/accounts/mfa/checkotp`. A 404 does not consume the OTP. |
 | CloudFront 403 on consent | Send a normal browser User-Agent |
 | `MaximumRedirectExceeded` | Use HttpClient AllowAutoRedirect=false |
 | Truncated redirect URL | Loses login_verifier; cannot continue without new OTP |
