@@ -1081,7 +1081,13 @@ static class Program
                 }
                 else Warn($"fuel: no grok-build/weekly figure for {m} in the Bob report (unknown).");
             }
-            catch (Exception ex) { Warn("fuel: Bob report unavailable (" + ex.Message + ")"); }
+            catch (Exception ex)
+            {
+                // PRI-02: do not swallow the no-token quit (or other stopped: gates).
+                if (ex.Message != null && ex.Message.StartsWith("stopped:", StringComparison.Ordinal))
+                    throw;
+                Warn("fuel: Bob report unavailable (" + ex.Message + ")");
+            }
         }
         else Warn("fuel: Bob report unavailable (" + fetched.Detail + ")");
         if (!DryRun && !Smoke && !Console.IsInputRedirected && !Ask("Continue anyway? [y/N]: ").StartsWith("y", StringComparison.OrdinalIgnoreCase))
