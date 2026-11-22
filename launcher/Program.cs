@@ -135,6 +135,27 @@ static class Program
                 case "--hours-user": HoursUserArg = Next(); break;
                 case "--hours-entry-id": HoursEntryIdArg = Next(); break;
                 case "--cli": CliArg = Next(); break;
+                case "--model":
+                    if (!PriorityStartSettings.TrySet("model", Next(), out string modelErr))
+                    {
+                        Err(modelErr);
+                        return 2;
+                    }
+                    break;
+                case "--context":
+                    if (!PriorityStartSettings.TrySet("context", Next(), out string contextErr))
+                    {
+                        Err(contextErr);
+                        return 2;
+                    }
+                    break;
+                case "--effort":
+                    if (!PriorityStartSettings.TrySet("effort", Next(), out string effortErr))
+                    {
+                        Err(effortErr);
+                        return 2;
+                    }
+                    break;
                 case "--mcp-local": PreferLocalMcp = true; break;
                 case "-h": case "--help": case "/?": Help(); return 0;
                 default: Err($"Unknown argument: {args[i]}"); Help(); return 2;
@@ -518,6 +539,7 @@ static class Program
         EnsureCommandLineSize(ChosenExe!, gargs, CliLaunch.KindName(ChosenCli) + " launch");
         EnsureCommandLineSize(ChosenExe!, resumeArgs, CliLaunch.KindName(ChosenCli) + " hours relaunch");
         string display = Quote(ChosenExe!) + " " + string.Join(' ', gargs.Select(a => a == rules ? $"<rules: {rulesFile}>" : Quote(a)));
+        Console.WriteLine(PriorityStartSettings.DryRunLine());
         Console.WriteLine("\nLaunch command:\n  " + display.Replace("\r\n", "\\n").Replace("\n", "\\n"));
         Log("launch: " + display);
         Check(Directory.Exists(workDir), $"working directory exists: {workDir}");
@@ -1297,6 +1319,9 @@ PriorityAgent.exe [options]
   --general             general Priority context (no customer)
   --customer <repo>     pick customer non-interactively (e.g. rees)
   --project <folder>    pick project / service-call folder (needs --customer)
+  --model <id>          models-webhook model (PRI-01)
+  --context <n>         models-webhook context (PRI-01)
+  --effort <level>      models-webhook effort (PRI-01)
   --dry-run             do everything except change grok config / customer clones and start the agent;
                         prints the exact grok command line
   --smoke               real setup + one brief single-turn Grok launch that makes no changes
