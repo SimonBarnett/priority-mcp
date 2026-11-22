@@ -249,3 +249,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - Priority start settings are --model, --context, and --effort on PriorityAgent. Dry-run must print the settings line.
 - When node is v8, node:test is unavailable. Check the same markup pins with a small script and still PASS a formatting MRB when they match the live sibling page.
 - The priority bob-ear embed unit is embed/bob-ear/, not the mcp-catalog source tree.
+- When a launcher tag ships the exe only, record the missing MSI as N/A against that tag instead of inventing an installer in the same slice.
