@@ -13,7 +13,7 @@ Non-interactive flags are unchanged: `--customer`, `--general`, and `--project` 
 
 **Wait spinner (`|` `/` `-` `\`).** `ConsoleWait.WithWait` cycles those glyphs on one TTY line while work runs, then settles to "done". A failed hours-list GET, fuel-report GET, or `ListCustomers` gh api does not print "done". Output stays quiet when stdin/stdout is redirected, or when `--mcp-catalog` sets `ConsoleWait.Quiet` before serve.
 
-Call sites today: `ListCustomers` (gh api topic list, including `--list`), hours list GET (`hours fetch`), Bob fuel report GET (`fuel report`), `/airc` host roster fetch (`airc hosts`), MCP setup (`grok mcp list` / `add` / `doctor`), and skills registration (`grok inspect`). `--no-fuel-check` still skips fuel entirely. Continue-anyway stays after the spinner. `--check-hours`, relaunch, and SKIP logging are unchanged. Clone and fetch waits are later FRs.
+Call sites today: `ListCustomers` (gh api topic list, including `--list`), hours list GET (`hours fetch`), Bob fuel report GET (`fuel report`), `/airc` host roster fetch (`airc hosts`), MCP setup (`grok mcp list` / `add` / `doctor`), and skills registration (`grok inspect`). `--no-fuel-check` still skips fuel entirely. Continue-anyway stays after the spinner for unknown/unavailable fuel. A known 0% reading shows a no-token dialog and quits (PRI-02); it does not offer continue. `--check-hours`, relaunch, and SKIP logging are unchanged. Clone and fetch waits are later FRs.
 
 ### `/airc` (FR #635)
 
