@@ -78,6 +78,9 @@ until the user allowlists an instance for this session.
    `harvest-priority-skills` / intake above (never push `main` for harvest).
    Product filings stay on `SimonBarnett/priority-mcp`; fleet/Bob/IRC defects
    go to `SimonBarnett/bobiverse`.
+   PRI-04: Priority exe lessons use Bob intake `POST https://bob.ntsa.uk/bob/v1/intake`
+   with `-Repo SimonBarnett/priority-mcp` (skill `priority-harvest-intake`).
+   Do not file them on `SimonBarnett/a-search`.
 7. **Hours + project work log:** hours are ALWAYS reported through the Bob hours
    webhook (`https://bob.ntsa.uk/bob/v1/hours`; contract in bobiverse
    `jeeves/docs/webhooks.md`, FR #3450) under `launcher/agent-rules.md`. They are
