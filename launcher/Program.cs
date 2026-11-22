@@ -1095,11 +1095,21 @@ static class Program
                         Check(true, $"fuel: {reading.Key} {reading.Percent}% on {m} -> pool");
                         return;
                     }
-                    Warn($"fuel: {reading.Key} is 0% on {m} (pool empty). Grok may need a session key; the launcher never handles keys.");
+                    Warn($"fuel: {reading.Key} is 0% on {m} (pool empty).");
+                    // PRI-02: no tokens left on this box. Dialog, then quit. Do not start.
+                    if (!DryRun && !Smoke)
+                        NoTokenGate.ShowDialog();
+                    throw new Exception("stopped: no tokens");
                 }
                 else Warn($"fuel: no grok-build/weekly figure for {m} in the Bob report (unknown).");
             }
-            catch (Exception ex) { Warn("fuel: Bob report unavailable (" + ex.Message + ")"); }
+            catch (Exception ex)
+            {
+                // PRI-02: do not swallow the no-token quit (or other stopped: gates).
+                if (ex.Message != null && ex.Message.StartsWith("stopped:", StringComparison.Ordinal))
+                    throw;
+                Warn("fuel: Bob report unavailable (" + ex.Message + ")");
+            }
         }
         else Warn("fuel: Bob report unavailable (" + fetched.Detail + ")");
         if (!DryRun && !Smoke && !Console.IsInputRedirected && !Ask("Continue anyway? [y/N]: ").StartsWith("y", StringComparison.OrdinalIgnoreCase))
