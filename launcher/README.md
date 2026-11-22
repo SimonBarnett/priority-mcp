@@ -288,6 +288,8 @@ place the exe, and run `PriorityAgent.exe --install` once. Releases remain pre-r
 
 ## Icon
 
-`priority.ico` is the Priority client's own icon, copied from `C:\Program Files (x86)\Priority\favicon.ico`
+Consumers (tray, exe, docs) reuse the existing file `launcher/priority.ico`. Do not draw a new mark.
+`PriorityAgent.csproj` sets `ApplicationIcon` to `priority.ico` beside the project, which is that same file.
+It is the Priority client's own icon, copied from `C:\Program Files (x86)\Priority\favicon.ico`
 on MarchHare. It has 16, 24, 32, 48, 128 and 256 px frames and is the same "p" logo as `WINMENU.exe`, the
 Priority desktop shortcut target. Priority is a trademark of Priority Software.
