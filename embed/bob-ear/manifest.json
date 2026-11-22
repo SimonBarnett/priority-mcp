@@ -1,0 +1,11 @@
+{
+  "product": "priority-mcp",
+  "embed": "bob-ear",
+  "contract": "docs/bob-ear-embed-layout.md",
+  "version": "1",
+  "msiInclude": "embed/bob-ear/",
+  "files": [
+    "manifest.json",
+    "www/index.html"
+  ]
+}

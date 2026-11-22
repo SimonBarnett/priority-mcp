@@ -238,6 +238,7 @@ PriorityAgent.exe --list --customer rees           + its project folders
 PriorityAgent.exe --customer rees --project SC263182
 PriorityAgent.exe --general
 PriorityAgent.exe --dry-run --customer rees --project SC263182   show everything, change nothing, print the launch command
+PriorityAgent.exe --model gpt-5 --context 200000 --effort low --dry-run --general   PRI-01 settings line before launch command
 PriorityAgent.exe --smoke --customer rees --project SC263182     real setup + one brief no-tools single-turn launch
 PriorityAgent.exe --cli cursor --customer rees --project SC263182
 PriorityAgent.exe --check-hours C:\AI\rees --session <uuid>      run only the hours check (path under the resolved AI root)
