@@ -1,4 +1,4 @@
-<!-- rules-version: 8 -->
+<!-- rules-version: 9 -->
 # Priority agent rules (from the Priority Agent launcher)
 
 The launcher fills in the {{...}} values on every start. These rules sit on top of
@@ -26,6 +26,9 @@ too, if they exist.
    **SimonBarnett/priority-mcp** as a **branch + PR**. Never push to main. Use the
    harvest-priority-skills / `tools/Invoke-FomprepHarvest.ps1` flow or
    `tools/Report-FomprepIntakeIssue.ps1` as `{{FOMPREP_DIR}}\AGENTS.md` describes.
+   PRI-04: that path is Bob intake `POST https://bob.ntsa.uk/bob/v1/intake` with
+   `-Repo SimonBarnett/priority-mcp`. Do not file those lessons on
+   `SimonBarnett/bobiverse` or `SimonBarnett/a-search`.
    Strip customer names, hosts, ENAMEs and data first.
 2. **Customer installation** skills and insights go to the **customer repo** ({{CUSTOMER_REPO}}).
    Put them in its `.grok/skills/`, `docs/` or `AGENTS.md`. Examples: their custom forms and
