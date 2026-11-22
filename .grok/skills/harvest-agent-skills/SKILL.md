@@ -244,5 +244,6 @@ books use `harvest-agent-skills` pointing at their home.)
 - A classic FORMCLTRIGTEXT FORMAT ADDTO probe must be one TEXTLINE of at most 68 characters and must SELECT from DUMMY. Split FORMAT or a missing FROM fails Form Prep.
 - When creating Priority procedures via SQL, keep ENAME <= 20 and TRIGMSG.MESSAGE <= 56; confirm explode child column (KEY2 vs KEY3) against live data before cost-split includes.
 - SQLI nested MAX(CURDATE) subquery expands to SQL Server Error 209 Ambiguous column; use two-step MAX into :VAR then filter (docs/skill-sources/forms-code/sqli-ambiguous-curdate-nested-max.md; PR #728).
+- Priority start settings are --model, --context, and --effort on PriorityAgent. Dry-run must print the settings line.
 - When node is v8, node:test is unavailable. Check the same markup pins with a small script and still PASS a formatting MRB when they match the live sibling page.
 - The priority bob-ear embed unit is embed/bob-ear/, not the mcp-catalog source tree.
