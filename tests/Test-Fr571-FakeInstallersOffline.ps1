@@ -24,6 +24,12 @@ Gate 'guard-allows-notmatch' (-not (Test-Fr571IsForbiddenInstallerCall $okNeg)) 
 # MRB #582 hostile: PowerShell iwr alias must trip the guard without needing iex.
 $iwrOnly = 'iwr https://' + 'cursor.com/install?win32=true'
 Gate 'guard-catches-iwr-alias' (Test-Fr571IsForbiddenInstallerCall $iwrOnly) 'iwr cursor.com/install is forbidden'
+# FR #779: Assert pin of the install host with message text that is not an invoke verb must pass.
+# (A prior tip failed suite-offline because the message said "irm" on the same line as cursor.com/install.)
+$okAssertPin = 'Assert(seen[0].Arguments.Contains("cursor.com/install", StringComparison.Ordinal), "cursor official install url");'
+Gate 'guard-allows-assert-pin' (-not (Test-Fr571IsForbiddenInstallerCall $okAssertPin)) 'assert URL pin without invoke verb is allowed'
+$badAssertIrmMsg = 'Assert(seen[0].Arguments.Contains("cursor.com/install", StringComparison.Ordinal), "cursor official irm");'
+Gate 'guard-catches-assert-irm-msg' (Test-Fr571IsForbiddenInstallerCall $badAssertIrmMsg) 'assert message word irm with host still trips guard'
 
 $scanRoots = @(
     (Join-Path $repo 'tests'),
