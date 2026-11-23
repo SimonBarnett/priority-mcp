@@ -21,8 +21,14 @@ if ($vtext -notmatch 'Not now') { Fail 'vision missing Not now' }
 if ($vtext -notmatch 'C:\\Program Files\\Priority Agent') { Fail 'vision missing install dir' }
 if ($vtext -match '(?im)^Closes\s') { Fail 'vision pack must not Closes implementation issues' }
 
-$files = Get-ChildItem $dir -Filter 'FR-*.md'
+$files = @(Get-ChildItem $dir -Filter 'FR-*.md')
 if ($files.Count -ne 8) { Fail "expected 8 FR mirrors, got $($files.Count)" }
+# FR #780: one mirror file per FR-NNN id (duplicate FR-003-*.md previously made Count 9).
+$ids = foreach ($f in $files) {
+    if ($f.Name -match '^(FR-\d{3})-') { $Matches[1] } else { $f.Name }
+}
+$dupIds = @($ids | Group-Object | Where-Object { $_.Count -gt 1 } | ForEach-Object { $_.Name })
+if ($dupIds.Count -gt 0) { Fail ("duplicate FR mirror ids: " + ($dupIds -join ', ')) }
 
 $tsv = @(Get-Content $issued | Select-Object -Skip 1 | Where-Object { $_ -match '\S' })
 if ($tsv.Count -ne 8) { Fail "ISSUED.tsv rows $($tsv.Count) not 8" }
