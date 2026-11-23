@@ -251,3 +251,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - The priority bob-ear embed unit is embed/bob-ear/, not the mcp-catalog source tree.
 - When a launcher tag ships the exe only, record the missing MSI as N/A against that tag instead of inventing an installer in the same slice.
 - PRI-08 S1 is met by docs/vendor-contract-bob-ear.md with contract version, BOB-50 launcher download URL, and BOB-55 embed/bob-ear include path.
+- PRI-03: Priority skills default MCP load path is https://mcp.ntsa.uk/mcp (LauncherSupport.HostedMcpUrl / register-hosted); --mcp-local opts into local stdio.
