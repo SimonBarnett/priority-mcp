@@ -787,7 +787,8 @@ static void TestFr568InstallerInteractiveUser()
     Assert(seen.Count == 0, "SYSTEM must not invoke runner");
     var user = CliInstall.Run(CliKind.Cursor, p => { seen.Add(p); return 0; }, localSystem: false, user: "simon");
     Assert(user.Ran && !user.LocalSystem && user.User == "simon", "interactive user must run");
-    Assert(seen.Count == 1 && seen[0].Arguments.Contains("cursor.com/install", StringComparison.Ordinal), "cursor official irm");
+    // FR #779: keep assert detail free of invoke-verb tokens (see Test-Fr571 offline guard).
+    Assert(seen.Count == 1 && seen[0].Arguments.Contains("cursor.com/install", StringComparison.Ordinal), "cursor official install url");
     Assert(!seen[0].Arguments.Contains("scoop", StringComparison.OrdinalIgnoreCase), "no Scoop");
 }
 
