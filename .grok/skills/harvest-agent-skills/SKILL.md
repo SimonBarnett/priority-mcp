@@ -151,7 +151,7 @@ books use `harvest-agent-skills` pointing at their home.)
 
 ## Harvested lessons (intake)
 
-- FORMCLTRIGTEXT / POST-FIELD: leftover `SQL.ENV <> 'copyps'` skips non-copy companies (key-alone empty related fields; Choose still works) — fix in **priority-form-engineering**; after edit Form Prep with LASTPREPDATE + prep artifact mtime — **priority-form-prep-after-sql-change**; Session 0 WINACTIV hangs — **priority-formprep** (interactive or Web/CredMan path).
+- FORMCLTRIGTEXT / POST-FIELD: leftover `SQL.ENV <> 'copyps'` skips non-copy companies (key-alone empty related fields; Choose still works) - fix in **priority-form-engineering**; after edit Form Prep with LASTPREPDATE + prep artifact mtime - **priority-form-prep-after-sql-change**; Session 0 WINACTIV hangs - **priority-formprep** (interactive or Web/CredMan path).
 - Priority Agent home (this repo) needs a-search-style CAST IRON Bobiverse intake: always pass `-Repo SimonBarnett/priority-mcp` (or the matching intake payload `repo`), ship repo-local `Report-FomprepIntakeIssue.ps1` / `Invoke-FomprepHarvest.ps1` wrappers, document dual-mode CWD vs referred skillbook in `docs/skillbook-referral.md`, and pin CAT needles for the intake default-repo path. File many small Goal/Deliverables/Testable FRs (not one omnibus). Backlog: issues #109-#118; docs park PR #119.
 - Priority Agent must preserve an existing hosted MCP URL on interactive start; local stdio catalog is opt-in only (FR #669; supersedes older no-DNS/local-stdio-default tip).
 - Priority Agent lists customers from GitHub topic priority-customer; ff-only clean main for fomprep; new customer/project is Ask Haitch only; secrets stay in C:\passwords\<repo>-connections.txt unread by the launcher.
@@ -184,7 +184,7 @@ books use `harvest-agent-skills` pointing at their home.)
 - priority-web-sdk appends /wcf/wcf/Service.svc unless url ends in .svc; use tenant probe wcf. OIDC user needs API License for WCF; PAT+OData/MCP for dictionary. Strip UTF-8 BOM on Windows token JSON.
 - Root .gitignore must list .bobiverse-seat and **/ .bobiverse-seat so harvest/MRB tips cannot commit Bobiverse job seat markers; document in harvest-agent-skills Do-not + Write tip (FR #349 / PR #350).
 - PowerShell (?m)$ gates against gitignore must normalize CRLF (or use \r?$) before match; ASCII pin scripts UTF-8 no BOM (WinPS 5.1: non-ASCII scripts need a UTF-8 BOM).
-- Public mcp-catalog must sync docs/_dag into data/ at build, trace data/dag.json, expose resolve_skills matching resolve_dag.py, and fail build on catalog↔DAG drift or secret-like DAG content; repair conflict-marker corruption in dag.json before sync.
+- Public mcp-catalog must sync docs/_dag into data/ at build, trace data/dag.json, expose resolve_skills matching resolve_dag.py, and fail build on catalog<->DAG drift or secret-like DAG content; repair conflict-marker corruption in dag.json before sync.
 - Priority Agent launcher FR that cites bobiverse #6026 means the merged priority_wcf.py client (#6035): drop airc launcher option, pass per-instance serverUrl+mode, never store creds in .priority-agent.json; --airc-console exits with removed message.
 - MRB README/docs: reject C0 BEL/BS/VT in changed .md; string-contains gates on tokenFile can PASS via a clean JSON example while prose is corrupted --- pin contiguous SaaS words and a no-C0 regex.
 - After a schema change on a record type, grep the whole product for old field names before DONE; unit string-gates on WcfSupport alone miss Program.cs compile breaks that only show in dotnet publish CI.
