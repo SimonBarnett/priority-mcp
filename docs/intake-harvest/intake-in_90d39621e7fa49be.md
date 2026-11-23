@@ -9,7 +9,7 @@ Generic Priority lessons from Toray SO260255 session (strip customer names in re
 
 4) Airc remote sqlcmd: keep each PRIVMSG under ~400 chars; prefer Action Cmd. PUT to airc\drop may time out ÔÇö fall back to one-line INSERTs. Do not put SQL passwords in airc/IRC payloads; use trusted auth when the console identity is sysadmin. Named-pipe/shared-memory SQL may have no TCP 1433.
 
-Path evidence: agentic_fomprep harvest from Priority Agent session; no secrets.
+Path evidence: priority-mcp harvest from Priority Agent session; no secrets.
 ---
 _via-intake id=`in_90d39621e7fa49be` ts=`2026-11-13T16:02:20Z`_
 _source machine=`marchhare` agent=`Report-FomprepIntakeIssue` book=`harvest-agent-skills` ver=`-`_

@@ -31,10 +31,10 @@ Grab from catalog MCP `https://mcp-priority.ntsa.uk/mcp` (`get_skill` with `name
 5. Dictionary inserts stay IDENTITY-safe (`priority-dictionary-sql`).
 6. After physical+dict: Form Generator FCLMN paint, then Named Form Prep
    (`UPD=N` + `LASTPREPDATE` advanced).
-7. **WINDBI / DBI titles ≤ 20 characters** for the table title and every
+7. **WINDBI / DBI titles <= 20 characters** for the table title and every
    column title (quoted labels).
 8. **Add a column** on an existing table in WINDBI with
-   `FOR TABLE <T> INSERT` + column line(s). Do **not** use `CHANGE TABLE … ADD`.
+   `FOR TABLE <T> INSERT` + column line(s). Do **not** use `CHANGE TABLE ... ADD`.
 
 ## Minimal physical + SIZE
 
@@ -60,7 +60,7 @@ FOR TABLE ORDERITEMS INSERT
 ZPVL_PREFORIGINUK(CHAR,1,'Pref Origin UK?');
 ```
 
-Title ≤ 20 chars. Then Form Generator paint + Form Prep.
+Title <= 20 chars. Then Form Generator paint + Form Prep.
 
 ## Related
 
