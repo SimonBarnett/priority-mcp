@@ -254,3 +254,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - PRI-03: Priority skills default MCP load path is https://mcp.ntsa.uk/mcp (LauncherSupport.HostedMcpUrl / register-hosted); --mcp-local opts into local stdio.
 - FR #597 / #765: git grep agentic_fomprep may only hit allowlisted alias surfaces; rewrite archival docs/intake-harvest path evidence to priority-mcp rather than widen the allowlist
 - UAT FAIL evidence issues that already filed gap FRs: fix remaining gaps in one PR that Closes the evidence issue and each gap; supersede narrower open PRs for the same gaps
+- Harvest playbooks that teach the Fr597 former-repo grep allowlist must not spell the former GitHub leaf; say former GitHub repo leaf or the gate fails (FR #774).
