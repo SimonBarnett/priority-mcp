@@ -254,3 +254,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - PRI-03: Priority skills default MCP load path is https://mcp.ntsa.uk/mcp (LauncherSupport.HostedMcpUrl / register-hosted); --mcp-local opts into local stdio.
 - FR #597 / #765: git grep for the former repo leaf may only hit allowlisted alias surfaces (README/AGENTS/VISION/launcher/Program.cs/Test-Fr597); rewrite archival docs/intake-harvest path evidence to priority-mcp rather than widen the allowlist
 - UAT FAIL evidence issues that already filed gap FRs: fix remaining gaps in one PR that Closes the evidence issue and each gap; supersede narrower open PRs for the same gaps
+- UAT FAIL when Test-Fr571 suite-offline trips on an Assert that pins cursor.com/install and says irm in the same message string --- split the host or drop irm from the message; MSI park Test-Mrb574 expects exactly one FR-*.md per ISSUED row (duplicate FR-003-*.md fails the count).
