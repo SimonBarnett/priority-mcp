@@ -26,7 +26,7 @@ Start with CWD at the **repo root**. Project skills load from `.grok/skills/`
 
 ## Clone path (Priority Agent launcher)
 
-The launcher resolves an **AI root**: existing `X:\AI` on ready drives **C: → D: → E: … Z:**, or creates `\AI` on the first ready drive in that order (override with `--root` / `PRIORITY_AGENT_ROOT`). It prefers `<AI root>\priority-mcp`, falls back to legacy `<AI root>\agentic_fomprep` (FR #597), and also searches other `X:\AI` / `X:\repos` roots. Only a real git clone (`.git` present, origin `SimonBarnett/priority-mcp` or legacy `SimonBarnett/agentic_fomprep`) counts. An **empty stub** (directory exists, no `.git`) is skipped; use the resolved `FOMPREP_DIR` / session cwd for `git pull`, or reclone / point `--root` at the working tree. Details: `launcher/README.md`.
+The launcher resolves an **AI root**: existing `X:\AI` on ready drives **C: -> D: -> E: ... Z:**, or creates `\AI` on the first ready drive in that order (override with `--root` / `PRIORITY_AGENT_ROOT`). It prefers `<AI root>\priority-mcp`, falls back to legacy `<AI root>\agentic_fomprep` (FR #597), and also searches other `X:\AI` / `X:\repos` roots. Only a real git clone (`.git` present, origin `SimonBarnett/priority-mcp` or legacy `SimonBarnett/agentic_fomprep`) counts. An **empty stub** (directory exists, no `.git`) is skipped; use the resolved `FOMPREP_DIR` / session cwd for `git pull`, or reclone / point `--root` at the working tree. Details: `launcher/README.md`.
 
 ## What this agent owns
 
@@ -88,7 +88,7 @@ until the user allowlists an instance for this session.
    durations, or hours entry ids). Whenever you record hours, also append a
    narrative of **actual work done** to `{customer}/{project}/log.md` (or
    `{project}/log.md` when the project lives at the customer-repo root). **Create
-   the file if missing.** Dated narrative only (what shipped, PRs/issues) — no
+   the file if missing.** Dated narrative only (what shipped, PRs/issues) - no
    hours, durations, or hours entry ids in the file; put the entry id in the chat
    summary only. Never put secrets in `log.md`. Skills: `hours-log-work-session`,
    `priority-customer-setup` (1.1.0+).
