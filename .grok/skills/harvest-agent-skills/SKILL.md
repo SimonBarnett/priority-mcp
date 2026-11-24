@@ -258,3 +258,4 @@ books use `harvest-agent-skills` pointing at their home.)
 - priority-mcp UAT: if VERSION lags launcher-v* (e.g. 1.0.74 vs 2.0.0), catch-up VERSION in the docs PR before uat_release.py patch bump; attach PriorityAgent.exe+sha256 on vX.Y.Z; MSI N/A ok when exe-only like launcher-v2.0.0
 - FR tips must not ship VERSION bumps or UAT-LOG PASS blocks; MRB tip-fixes those out before PASS held on open digest Depends-on.
 - EnsureClone warm starts: stamp .git/priority-agent-last-pull.json after successful ff when HEAD==origin/branch; skip fetch within TTL (default 45m) unless --force-pull; keep dirty FR #240 skip-merge.
+- FIX CONFLICTING tip that still has unique work: rebase onto main, keep later cold-start changes (TTL/CollectSightings), re-apply PhaseTiming Stopwatch wraps, force-push tip, DONE FIX.
