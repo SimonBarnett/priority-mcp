@@ -24,7 +24,7 @@ static class Program
     const string McpName = "priority-catalog";
     const string FuelUrl = "https://bob.ntsa.uk/bob/v1/report";
 
-    static bool DryRun, ListOnly, Smoke, General, NoPause, NoFuel, PreferLocalMcp;
+    static bool DryRun, ListOnly, Smoke, General, NoPause, NoFuel, PreferLocalMcp, RefreshCustomers;
     static string? CustomerArg, ProjectArg, CheckHoursDir, SessionArg;
     static string? HoursUserArg, HoursEntryIdArg;
     /// <summary>FR #570 / FR-004: --cli grok|cursor|opencode; when unset, MSI-style chooser (issue #569).</summary>
@@ -108,6 +108,7 @@ static class Program
             {
                 case "--dry-run": DryRun = true; break;
                 case "--list": ListOnly = true; break;
+                case "--refresh-customers": RefreshCustomers = true; break;
                 case "--smoke": Smoke = true; break;
                 case "--general": General = true; break;
                 case "--customer": CustomerArg = Next(); break;
@@ -266,9 +267,29 @@ static class Program
         Check(skillCount > 0, $"skills in {skillsDir}: {skillCount}");
 
         // ---- 2. customers from GitHub topic ------------------------------------------
+        // FR #793: --general skips the gh topic scan; otherwise prefer short-TTL disk cache.
         Header($"[2] Customer repos (GitHub topic '{Topic}')");
-        var customers = ListCustomers();
-        Check(customers.Count > 0, $"{customers.Count} customer repo(s) tagged {Topic}");
+        List<Customer> customers;
+        if (General && !ListOnly)
+        {
+            customers = new();
+            Info("skip ListCustomers (--general)");
+            Check(true, "customer list deferred (--general)");
+        }
+        else
+        {
+            bool forceRefresh = ListOnly || RefreshCustomers;
+            customers = ListCustomers(forceRefresh);
+            // --customer miss on a warm cache: one live refresh before failing.
+            if (CustomerArg != null && !forceRefresh
+                && !customers.Any(c => c.Name.Equals(CustomerArg, StringComparison.OrdinalIgnoreCase)
+                    || c.FullName.Equals(CustomerArg, StringComparison.OrdinalIgnoreCase)))
+            {
+                Info($"'{CustomerArg}' not in customer cache; refreshing from gh");
+                customers = ListCustomers(forceRefresh: true);
+            }
+            Check(customers.Count > 0, $"{customers.Count} customer repo(s) tagged {Topic}");
+        }
         // FR #675: do not dump the numbered list then show Pick customer again.
         // Interactive path goes straight to PickList; --list keeps the dump.
         if (ListOnly)
@@ -889,15 +910,27 @@ static class Program
         return dir;
     }
 
-    static List<Customer> ListCustomers()
+    static List<Customer> ListCustomers(bool forceRefresh = false)
     {
+        // FR #793: short-TTL disk cache; --list / --refresh-customers force a live gh scan.
+        TimeSpan ttl = CustomerListCache.ResolveTtl(Environment.GetEnvironmentVariable("PRIORITY_AGENT_CUSTOMERS_TTL_MIN"));
+        string cachePath = Environment.GetEnvironmentVariable("PRIORITY_AGENT_CUSTOMERS_CACHE")
+            ?? CustomerListCache.DefaultCachePath();
+        if (!forceRefresh
+            && CustomerListCache.TryLoad(cachePath, Topic, DateTime.UtcNow, ttl, out var cached, out TimeSpan age))
+        {
+            Info($"customers from cache ({cached.Count}, age {(int)age.TotalMinutes}m, ttl {(int)ttl.TotalMinutes}m)");
+            return cached.Select(r => new Customer(r.Name, r.FullName, r.DefaultBranch, r.Description)).ToList();
+        }
+
         // REST listing filtered on topics: no search-index lag (gh repo list --topic uses search).
         // FR #615 / S3: spinner while gh api lists priority-customer repos (Quiet/redirected = no writes).
         string jq = ".[] | select((.topics // []) | index(\"" + Topic + "\")) | [.name, .full_name, .default_branch, (.description // \"\")] | @tsv";
         // FR #642: failed gh api must throw inside WithWait so the spinner does not settle to "customers done".
+        List<Customer> live;
         try
         {
-            return ConsoleWait.WithWait("customers", () =>
+            live = ConsoleWait.WithWait("customers", () =>
             {
                 var (rc, outp, err) = Capture(Gh, null, "api", "--paginate", "user/repos?affiliation=owner&per_page=100", "--jq", jq);
                 if (rc != 0)
@@ -915,6 +948,26 @@ static class Program
         catch (InvalidOperationException)
         {
             return new();
+        }
+        if (live.Count > 0)
+            TryWriteCustomerCache(cachePath, live);
+        return live;
+    }
+
+    static void TryWriteCustomerCache(string path, List<Customer> customers)
+    {
+        try
+        {
+            string? parent = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(parent) && !Directory.Exists(parent)) Directory.CreateDirectory(parent);
+            var rows = customers
+                .Select(c => new CustomerCacheRow(c.Name, c.FullName, c.DefaultBranch, c.Description))
+                .ToList();
+            File.WriteAllText(path, CustomerListCache.BuildJson(Topic, DateTime.UtcNow, rows));
+        }
+        catch (Exception ex)
+        {
+            Warn("could not write customer cache: " + ex.Message);
         }
     }
 
@@ -1326,7 +1379,9 @@ PriorityAgent.exe [options]
   --install             create/update the per-user Desktop shortcut 'Priority Agent' (FR #668)
   --uninstall           remove that Desktop shortcut (FR #668)
   --list                list customer repos (topic priority-customer); with --customer, also list its folders
-  --general             general Priority context (no customer)
+                        (forces a live gh customer scan; FR #793)
+  --refresh-customers   ignore the FR #793 customer-topic disk cache and re-list from gh
+  --general             general Priority context (no customer); skips the gh customer scan (FR #793)
   --customer <repo>     pick customer non-interactively (e.g. rees)
   --project <folder>    pick project / service-call folder (needs --customer)
   --model <id>          models-webhook model (PRI-01)

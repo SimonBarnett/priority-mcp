@@ -103,6 +103,8 @@ var checks = new List<(string Name, Action Run)>
     ("FR-615: ListCustomers wraps gh api with ConsoleWait.WithWait", TestFr615ListCustomersUsesWithWait),
     ("FR-615: ListCustomers failure path still Err + empty list", TestFr615ListCustomersFailurePathPin),
     ("FR-642: ListCustomers gh failure throws inside WithWait (no done settle)", TestFr642ListCustomersFailThrowsForSettle),
+    ("FR-793: customer cache loads within TTL and rejects stale/wrong topic", TestFr793CustomerCacheTtl),
+    ("FR-793: --general skips ListCustomers; --list/--refresh force live", TestFr793DeferAndRefreshWired),
     ("FR-635: digest fixture maps several hosts including domain", TestFr635ParseSeveralHosts),
     ("FR-635: empty roster message without PickList", TestFr635EmptyRosterMessage),
     ("FR-635: unreachable roster errors with retry hint", TestFr635UnreachableRoster),
@@ -1292,7 +1294,7 @@ static void TestFr614CloneWaitsWired()
 {
     string src = ReadLauncherProgram();
     int start = src.IndexOf("static string? EnsureClone(", StringComparison.Ordinal);
-    int end = src.IndexOf("static List<Customer> ListCustomers()", start, StringComparison.Ordinal);
+    int end = src.IndexOf("static List<Customer> ListCustomers(", start, StringComparison.Ordinal);
     string window = src[start..end];
     Assert(window.Contains("ConsoleWait.WithWait(\"clone\", () => RunTo(Gh, CloneRoot, \"repo\", \"clone\", fullName, preferred))", StringComparison.Ordinal),
         "clone must execute inside WithWait");
@@ -1306,7 +1308,7 @@ static void TestFr614CloneGuardsPreserved()
 {
     string src = ReadLauncherProgram();
     int start = src.IndexOf("static string? EnsureClone(", StringComparison.Ordinal);
-    int end = src.IndexOf("static List<Customer> ListCustomers()", start, StringComparison.Ordinal);
+    int end = src.IndexOf("static List<Customer> ListCustomers(", start, StringComparison.Ordinal);
     string window = src[start..end];
     int clone = window.IndexOf("ConsoleWait.WithWait(\"clone\"", StringComparison.Ordinal);
     int fetch = window.IndexOf("ConsoleWait.WithWait(\"fetch\"", StringComparison.Ordinal);
@@ -1878,7 +1880,7 @@ static void TestFr675NoDuplicateCustomerList()
 static void TestFr615ListCustomersUsesWithWait()
 {
     string src = ReadLauncherProgramSrc();
-    int method = src.IndexOf("static List<Customer> ListCustomers()", StringComparison.Ordinal);
+    int method = src.IndexOf("static List<Customer> ListCustomers(", StringComparison.Ordinal);
     Assert(method >= 0, "ListCustomers method missing");
     string window = src.Substring(method, Math.Min(2500, src.Length - method));
     int wait = window.IndexOf("ConsoleWait.WithWait", StringComparison.Ordinal);
@@ -1892,19 +1894,19 @@ static void TestFr615ListCustomersUsesWithWait()
 static void TestFr615ListCustomersFailurePathPin()
 {
     string src = ReadLauncherProgramSrc();
-    int method = src.IndexOf("static List<Customer> ListCustomers()", StringComparison.Ordinal);
+    int method = src.IndexOf("static List<Customer> ListCustomers(", StringComparison.Ordinal);
     Assert(method >= 0, "ListCustomers method missing");
     string window = src.Substring(method, Math.Min(2500, src.Length - method));
     Assert(window.Contains("gh api failed", StringComparison.Ordinal), "failure must Err with gh api failed");
     Assert(window.Contains("return new()", StringComparison.Ordinal) || window.Contains("return new List", StringComparison.Ordinal),
         "failure must return empty list");
-    Assert(src.Contains("var customers = ListCustomers()", StringComparison.Ordinal), "--list / interactive still call ListCustomers");
+    Assert(src.Contains("ListCustomers(", StringComparison.Ordinal), "--list / interactive still call ListCustomers");
 }
 
 static void TestFr642ListCustomersFailThrowsForSettle()
 {
     string src = ReadLauncherProgramSrc();
-    int method = src.IndexOf("static List<Customer> ListCustomers()", StringComparison.Ordinal);
+    int method = src.IndexOf("static List<Customer> ListCustomers(", StringComparison.Ordinal);
     Assert(method >= 0, "ListCustomers method missing");
     string window = src.Substring(method, Math.Min(2500, src.Length - method));
     int wait = window.IndexOf("ConsoleWait.WithWait", StringComparison.Ordinal);
@@ -1912,6 +1914,45 @@ static void TestFr642ListCustomersFailThrowsForSettle()
     int thr = window.IndexOf("throw new InvalidOperationException", StringComparison.Ordinal);
     Assert(wait >= 0 && err > wait && thr > err, "Err then throw must run inside WithWait so settle skips done");
     Assert(window.Contains("catch (InvalidOperationException)", StringComparison.Ordinal), "catch outside WithWait returns empty");
+}
+
+static void TestFr793CustomerCacheTtl()
+{
+    var now = new DateTime(2026, 11, 24, 12, 0, 0, DateTimeKind.Utc);
+    var rows = new List<CustomerCacheRow>
+    {
+        new("rees", "SimonBarnett/rees", "main", "demo"),
+    };
+    string json = CustomerListCache.BuildJson("priority-customer", now.AddMinutes(-5), rows);
+    string path = Path.Combine(Path.GetTempPath(), "priority-agent-fr793-" + Guid.NewGuid().ToString("N") + ".json");
+    File.WriteAllText(path, json);
+    Assert(CustomerListCache.TryLoad(path, "priority-customer", now, TimeSpan.FromMinutes(30), out var loaded, out var age),
+        "fresh cache must load");
+    Assert(loaded.Count == 1 && loaded[0].Name == "rees", "row round-trip");
+    Assert(age.TotalMinutes >= 4.9 && age.TotalMinutes <= 5.1, "age ~5m");
+    Assert(!CustomerListCache.TryLoad(path, "priority-customer", now.AddMinutes(40), TimeSpan.FromMinutes(30), out _, out _),
+        "stale cache must miss");
+    Assert(!CustomerListCache.TryLoad(path, "other-topic", now, TimeSpan.FromMinutes(30), out _, out _),
+        "wrong topic must miss");
+    Assert(CustomerListCache.ResolveTtl(null) == TimeSpan.FromMinutes(30), "default TTL 30m");
+}
+
+static void TestFr793DeferAndRefreshWired()
+{
+    string src = ReadLauncherProgramSrc();
+    Assert(src.Contains("skip ListCustomers (--general)", StringComparison.Ordinal), "--general skips scan");
+    Assert(src.Contains("case \"--refresh-customers\": RefreshCustomers = true;", StringComparison.Ordinal),
+        "--refresh-customers flag");
+    Assert(src.Contains("CustomerListCache.TryLoad", StringComparison.Ordinal), "cache load before gh");
+    Assert(src.Contains("TryWriteCustomerCache", StringComparison.Ordinal), "cache write after live");
+    Assert(src.Contains("not in customer cache; refreshing from gh", StringComparison.Ordinal),
+        "--customer miss refreshes once");
+    int method = src.IndexOf("static List<Customer> ListCustomers(bool forceRefresh", StringComparison.Ordinal);
+    Assert(method >= 0, "ListCustomers(forceRefresh) signature");
+    string readme = File.ReadAllText(Path.Combine(Path.GetDirectoryName(ReadLauncherProgramPath())!, "README.md"));
+    Assert(readme.Contains("customers-topic-cache.json", StringComparison.Ordinal)
+        && readme.Contains("PRIORITY_AGENT_CUSTOMERS_TTL_MIN", StringComparison.Ordinal),
+        "README documents cache");
 }
 
 static string NewTemp()
