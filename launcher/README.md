@@ -84,9 +84,13 @@ PriorityAgent.exe --uninstall
    - This is needed because Grok only reads project skills from the cwd's own repo, and a
      customer repo is a different repo. This makes the Priority skills visible to **all** Grok sessions on the machine.
 3. It **loads the customer repos**: SimonBarnett repos tagged with the GitHub topic **`priority-customer`**.
-   It uses the REST API through `gh api`, with no search-index lag. `--list` prints the numbered
-   table (name, clone path, description). Interactive mode skips that dump and goes straight to
-   **Pick customer** (FR #675 — no duplicate list).
+   It uses the REST API through `gh api`, with no search-index lag. **FR #793:** successful lists are
+   cached under `%LOCALAPPDATA%\PriorityAgent\customers-topic-cache.json` (TTL default 30 minutes via
+   `PRIORITY_AGENT_CUSTOMERS_TTL_MIN`; override path with `PRIORITY_AGENT_CUSTOMERS_CACHE`).
+   `--general` skips the scan; `--list` / `--refresh-customers` force a live refresh; a `--customer`
+   miss on a warm cache refreshes once before failing. `--list` prints the numbered table (name, clone
+   path, description). Interactive mode skips that dump and goes straight to **Pick customer**
+   (FR #675 — no duplicate list).
 4. You pick one of three contexts:
    - **General Priority**: cwd is the priority-mcp clone.
    - **Customer**: cwd is the customer clone. A repo new to the machine is cloned into `<AI root>\<repo>`;
