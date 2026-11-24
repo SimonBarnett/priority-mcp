@@ -76,6 +76,9 @@ var checks = new List<(string Name, Action Run)>
     ("FR-613: Program sets Quiet before --mcp-catalog serve", TestFr613McpCatalogSetsQuiet),
     ("FR-614: EnsureClone wraps clone, fetch and ff-only merge waits", TestFr614CloneWaitsWired),
     ("FR-614: EnsureClone preserves dirty, offline and dry-run guards", TestFr614CloneGuardsPreserved),
+    ("FR-791: TTL skips fetch when stamp head==origin within window", TestFr791TtlSkipsWhenCurrent),
+    ("FR-791: TTL does not skip when force-pull, stale, or head moved", TestFr791TtlDoesNotSkipWhenForcedOrStale),
+    ("FR-791: EnsureClone wires TTL skip + --force-pull + stamp write", TestFr791EnsureCloneTtlWired),
     ("FR-619: hours fetch TTY spinner settles done on success", TestFr619HoursFetchTtyDone),
     ("FR-619: hours fetch failure keeps detail and does not print done", TestFr619HoursFetchFailNoDone),
     ("FR-619: hours fetch source wraps the GET; relaunch SKIP stays", TestFr619HoursFetchWired),
@@ -1325,6 +1328,60 @@ static void TestFr614CloneGuardsPreserved()
     Assert(window.Contains("Check(rc == 0, $\"cloned {fullName}\")", StringComparison.Ordinal)
         && window.Contains("Check(mrc == 0 && after == remote,", StringComparison.Ordinal),
         "final clone and fast-forward checks must remain outside the waits");
+}
+
+static void TestFr791TtlSkipsWhenCurrent()
+{
+    var now = new DateTime(2026, 11, 24, 12, 0, 0, DateTimeKind.Utc);
+    string sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    string stamp = ClonePullTtl.BuildStampJson(sha, sha, "main", now.AddMinutes(-10));
+    Assert(ClonePullTtl.ShouldSkipFetch(sha, "main", forcePull: false, now, TimeSpan.FromMinutes(45), stamp),
+        "fresh stamp with HEAD==origin must skip");
+    Assert(ClonePullTtl.ResolveTtl(null) == TimeSpan.FromMinutes(45), "default TTL 45m");
+    Assert(ClonePullTtl.ResolveTtl("60") == TimeSpan.FromMinutes(60), "env minutes honored");
+    Assert(ClonePullTtl.ResolveTtl("1") == TimeSpan.FromMinutes(5), "TTL floor 5m");
+    Assert(ClonePullTtl.StampPath(@"C:\ai\priority-mcp").Replace('/', '\\')
+            .EndsWith(@"\.git\priority-agent-last-pull.json", StringComparison.OrdinalIgnoreCase),
+        "stamp under .git");
+}
+
+static void TestFr791TtlDoesNotSkipWhenForcedOrStale()
+{
+    var now = new DateTime(2026, 11, 24, 12, 0, 0, DateTimeKind.Utc);
+    string sha = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    string other = "cccccccccccccccccccccccccccccccccccccccc";
+    string fresh = ClonePullTtl.BuildStampJson(sha, sha, "main", now.AddMinutes(-10));
+    Assert(!ClonePullTtl.ShouldSkipFetch(sha, "main", forcePull: true, now, TimeSpan.FromMinutes(45), fresh),
+        "force-pull must fetch");
+    string stale = ClonePullTtl.BuildStampJson(sha, sha, "main", now.AddMinutes(-90));
+    Assert(!ClonePullTtl.ShouldSkipFetch(sha, "main", forcePull: false, now, TimeSpan.FromMinutes(45), stale),
+        "stale stamp must fetch");
+    Assert(!ClonePullTtl.ShouldSkipFetch(other, "main", forcePull: false, now, TimeSpan.FromMinutes(45), fresh),
+        "moved HEAD must fetch");
+    string behind = ClonePullTtl.BuildStampJson(sha, other, "main", now.AddMinutes(-10));
+    Assert(!ClonePullTtl.ShouldSkipFetch(sha, "main", forcePull: false, now, TimeSpan.FromMinutes(45), behind),
+        "stamp that was not current must fetch");
+    Assert(!ClonePullTtl.ShouldSkipFetch(sha, "main", forcePull: false, now, TimeSpan.FromMinutes(45), null),
+        "missing stamp must fetch");
+}
+
+static void TestFr791EnsureCloneTtlWired()
+{
+    string src = ReadLauncherProgram();
+    int start = src.IndexOf("static string? EnsureClone(", StringComparison.Ordinal);
+    int end = src.IndexOf("static List<Customer> ListCustomers()", start, StringComparison.Ordinal);
+    string window = src[start..end];
+    Assert(window.Contains("ClonePullTtl.ShouldSkipFetch", StringComparison.Ordinal), "TTL gate before fetch");
+    Assert(window.Contains("skip fetch (TTL", StringComparison.Ordinal), "TTL skip log line");
+    Assert(window.Contains("TryWriteClonePullStamp", StringComparison.Ordinal), "stamp after successful pull");
+    Assert(src.Contains("case \"--force-pull\": ForcePull = true;", StringComparison.Ordinal), "--force-pull flag");
+    Assert(src.Contains("--force-pull", StringComparison.Ordinal) && src.Contains("FR #791", StringComparison.Ordinal),
+        "help documents force-pull / FR #791");
+    string progPath = ReadLauncherProgramPath();
+    string readme = File.ReadAllText(Path.Combine(Path.GetDirectoryName(progPath)!, "README.md"));
+    Assert(readme.Contains("priority-agent-last-pull.json", StringComparison.Ordinal)
+        && readme.Contains("PRIORITY_AGENT_CLONE_PULL_TTL_MIN", StringComparison.Ordinal),
+        "README documents stamp + TTL env");
 }
 
 static void TestFr619HoursFetchTtyDone()

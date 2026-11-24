@@ -24,7 +24,7 @@ static class Program
     const string McpName = "priority-catalog";
     const string FuelUrl = "https://bob.ntsa.uk/bob/v1/report";
 
-    static bool DryRun, ListOnly, Smoke, General, NoPause, NoFuel, PreferLocalMcp;
+    static bool DryRun, ListOnly, Smoke, General, NoPause, NoFuel, PreferLocalMcp, ForcePull;
     static string? CustomerArg, ProjectArg, CheckHoursDir, SessionArg;
     static string? HoursUserArg, HoursEntryIdArg;
     /// <summary>FR #570 / FR-004: --cli grok|cursor|opencode; when unset, MSI-style chooser (issue #569).</summary>
@@ -107,6 +107,7 @@ static class Program
             switch (a)
             {
                 case "--dry-run": DryRun = true; break;
+                case "--force-pull": ForcePull = true; break;
                 case "--list": ListOnly = true; break;
                 case "--smoke": Smoke = true; break;
                 case "--general": General = true; break;
@@ -870,8 +871,24 @@ static class Program
         if (pickReason != null && pickReason.Contains("dirty", StringComparison.OrdinalIgnoreCase))
             Warn($"{dir} has uncommitted changes: using it and skipping pull");
         Info($"clone: {dir}");
+        string beforeFull = GitOut(dir, "rev-parse", "HEAD");
         string before = GitOut(dir, "rev-parse", "--short", "HEAD");
         string cur = GitOut(dir, "rev-parse", "--abbrev-ref", "HEAD");
+        // FR #791: skip network fetch when a recent successful pull left HEAD==origin/branch.
+        // --force-pull / ForcePull always fetches. Dirty clones still skip merge (FR #240).
+        TimeSpan pullTtl = ClonePullTtl.ResolveTtl(Environment.GetEnvironmentVariable("PRIORITY_AGENT_CLONE_PULL_TTL_MIN"));
+        string? stampJson = null;
+        try
+        {
+            string stampPath = ClonePullTtl.StampPath(dir);
+            if (File.Exists(stampPath)) stampJson = File.ReadAllText(stampPath);
+        }
+        catch { }
+        if (ClonePullTtl.ShouldSkipFetch(beforeFull, branch, ForcePull, DateTime.UtcNow, pullTtl, stampJson))
+        {
+            Info($"skip fetch (TTL {((int)pullTtl.TotalMinutes)}m): tip {before} still current from last pull");
+            return dir;
+        }
         int frc = ConsoleWait.WithWait("fetch", () => RunTo(Git, dir, "fetch", "--prune", "--quiet", "origin"));
         if (frc != 0) { Warn("git fetch failed (offline?) - using local copy"); return dir; }
         string behind = GitOut(dir, "rev-list", "--count", $"HEAD..origin/{branch}");
@@ -884,9 +901,29 @@ static class Program
         if (!alwaysPull) { Info($"{behind} commit(s) behind origin/{branch}; dry run - not fast-forwarding."); return dir; }
         int mrc = ConsoleWait.WithWait("fast-forward", () => RunTo(Git, dir, "merge", "--ff-only", "--quiet", $"origin/{branch}"));
         string after = GitOut(dir, "rev-parse", "--short", "HEAD");
+        string afterFull = GitOut(dir, "rev-parse", "HEAD");
         string remote = GitOut(dir, "rev-parse", "--short", $"origin/{branch}");
+        string remoteFull = GitOut(dir, "rev-parse", $"origin/{branch}");
         Check(mrc == 0 && after == remote, $"fast-forward {name}: {before} -> {after} (origin/{branch} {remote}, was {behind} behind)");
+        // Stamp only when HEAD matches origin/branch after a successful pull path.
+        if (mrc == 0 && string.Equals(afterFull, remoteFull, StringComparison.OrdinalIgnoreCase))
+            TryWriteClonePullStamp(dir, afterFull, remoteFull, branch);
         return dir;
+    }
+
+    static void TryWriteClonePullStamp(string cloneDir, string head, string origin, string branch)
+    {
+        try
+        {
+            string path = ClonePullTtl.StampPath(cloneDir);
+            string? parent = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(parent) && !Directory.Exists(parent)) Directory.CreateDirectory(parent);
+            File.WriteAllText(path, ClonePullTtl.BuildStampJson(head, origin, branch, DateTime.UtcNow));
+        }
+        catch (Exception ex)
+        {
+            Warn("could not write clone pull stamp: " + ex.Message);
+        }
     }
 
     static List<Customer> ListCustomers()
@@ -1334,6 +1371,7 @@ PriorityAgent.exe [options]
   --effort <level>      models-webhook effort (PRI-01)
   --dry-run             do everything except change grok config / customer clones and start the agent;
                         prints the exact grok command line
+  --force-pull          always git fetch + ff-only (ignore FR #791 clone-pull TTL skip)
   --smoke               real setup + one brief single-turn Grok launch that makes no changes
   --root <dir>          clone root for repos new to this machine (default: first existing X:\AI on C->D->E..Z,
                         else create \AI on the first ready drive in that order; env PRIORITY_AGENT_ROOT)
