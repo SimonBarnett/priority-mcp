@@ -1,39 +1,6 @@
 # UAT log — SimonBarnett/priority-mcp#0
 
 **Verdict:** UAT PASS  
-**Date (UTC):** 2026-11-24T00:27:51Z  
-**Commit tested:** aa8f7277ae1584e0f42b95418bcbfa604e09c094 (origin/main after harvest #787; product tip still post-#785 v2.0.1)  
-**Seat / machine:** redqueen-6564 (Windows). This seat did not author cycle product PRs #783-#785.  
-**Repo clear check:** open issues empty; open PRs empty.  
-**Cycle slice:** harvest-lesson #787 after prior PASS v2.0.1; re-verify clear tip.
-
-## Cycle / PRI slice
-
-| id | criterion | result | evidence |
-|----|-----------|--------|----------|
-| PRI-01 | model/context/effort start settings | PASS | tests/Test-Fr738-Pri01Settings.ps1 (in 40 Test-*.ps1) |
-| PRI-02 | no-token dialog + quit | PASS | tests/test_*.py 8 passed |
-| PRI-03 | skills from mcp.ntsa.uk | PASS | POST https://mcp.ntsa.uk/mcp initialize HTTP 200 serverInfo mcp-priority 1.1.1 |
-| PRI-04..08 | harvest / MSI N/A / icon / vendor contract | PASS | pytest + prior pins still green |
-| V1 | rules-version >= 2; connect without ask; prefer DEV; never echo secrets | PASS | Test-Fr201-VisionRulesV2.ps1 |
-| V3 | Catalog merge gate | PASS | v2/tools/Test-PriorityCatalog.ps1 exit 0 |
-| V7 | Form Prep live EXECPREPLOCK/LASTPREPDATE | SKIP | No C:\passwords\priority-mcp-connections.txt on redqueen; not CE-PRIORITY-DEV1. Same class as prior UATs. Not filed. |
-
-Root tests/Test-*.ps1: **40 PASS**, 0 FAIL. tests/test_*.py: **8 passed**. Catalog PASS.
-
-## Release
-
-- Tag/title from uat_release.py (FR #7122): **Priority Agent v2.0.2** / `v2.0.2`.
-- Assets: PriorityAgent.exe + .sha256 from launcher/build.ps1 -Version 2.0.2.
-
-## Gaps
-
-none
-
----
-# UAT log — SimonBarnett/priority-mcp#0
-
-**Verdict:** UAT PASS  
 **Date (UTC):** 2026-11-24T00:04:37Z  
 **Commit tested:** 4abb195b57c17039e59dce5852bf372ed585b954 (origin/main after PR #783/#784)  
 **Seat / machine:** redqueen-668 (Windows). This seat did not author cycle PRs #757-#784 (gh author SimonBarnett).  
