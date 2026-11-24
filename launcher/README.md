@@ -246,6 +246,7 @@ PriorityAgent.exe --mcp-catalog [<catalog dir>]                 fallback stdio c
 ```
 
 Other options: `--root <dir>` (clone root; default: first existing `X:\AI` on C:->Z:, else create `\AI` on the first ready drive; env `PRIORITY_AGENT_ROOT`),
+`--search-remote` (FR #792: also probe Network/UNC mapped `X:\AI` / `X:\repos`; default is fixed local disks only; env `PRIORITY_AGENT_SEARCH_REMOTE=1`; git probes use `PRIORITY_AGENT_GIT_PROBE_MS`, default 10000, and short-circuit when the preferred clone root already has a usable Clean|Dirty clone),
 `--cli grok|cursor|opencode` (env `PRIORITY_AGENT_CLI`; when omitted the issue #569 chooser runs),
 `--passwords-dir <dir>`, `--no-fuel-check`, `--no-pause`.
 

@@ -38,9 +38,24 @@ static class Program
     static string? CloneRootOverride = Environment.GetEnvironmentVariable("PRIORITY_AGENT_ROOT");
     static string CloneRoot = "";
     static string PasswordsDir = Environment.GetEnvironmentVariable("PRIORITY_AGENT_PASSWORDS") ?? @"C:\passwords";
+    /// <summary>FR #792: also probe Network/UNC mapped drives (default: fixed local only).</summary>
+    static bool SearchRemote =
+        string.Equals(Environment.GetEnvironmentVariable("PRIORITY_AGENT_SEARCH_REMOTE"), "1", StringComparison.Ordinal)
+        || string.Equals(Environment.GetEnvironmentVariable("PRIORITY_AGENT_SEARCH_REMOTE"), "true", StringComparison.OrdinalIgnoreCase);
+    /// <summary>FR #792: per-root git remote/status probe timeout (ms). Env PRIORITY_AGENT_GIT_PROBE_MS.</summary>
+    static int GitProbeTimeoutMs = ParsePositiveMs(
+        Environment.GetEnvironmentVariable("PRIORITY_AGENT_GIT_PROBE_MS"),
+        10_000);
     static string[] SearchRoots = Array.Empty<string>();
     static string LogFile = "";
     static int Fails;
+
+    static int ParsePositiveMs(string? raw, int fallback)
+    {
+        if (int.TryParse((raw ?? "").Trim(), out int ms) && ms > 0 && ms <= 120_000)
+            return ms;
+        return fallback;
+    }
 
     // FR #267: banner is X.Y.Z (InformationalVersion), not Assembly 4-part FileVersion.
     internal static string LauncherBannerVersion()
@@ -113,6 +128,7 @@ static class Program
                 case "--customer": CustomerArg = Next(); break;
                 case "--project": ProjectArg = Next(); break;
                 case "--root": CloneRootOverride = Next(); break;
+                case "--search-remote": SearchRemote = true; break;
                 case "--no-pause": NoPause = true; break;
                 case "--no-fuel-check": NoFuel = true; break;
                 case "--install":
@@ -206,8 +222,8 @@ static class Program
             });
             if (!created) Info($"AI root: {CloneRoot}");
         }
-        SearchRoots = AiRoot.BuildSearchRoots(CloneRoot);
-        Log($"clone root: {CloneRoot}; search: {string.Join(", ", SearchRoots)}");
+        SearchRoots = AiRoot.BuildSearchRoots(CloneRoot, includeRemote: SearchRemote);
+        Log($"clone root: {CloneRoot}; search-remote={SearchRemote}; git-probe-ms={GitProbeTimeoutMs}; search: {string.Join(", ", SearchRoots)}");
 
         string? git = Which("git.exe", Environment.GetEnvironmentVariable("PRIORITY_AGENT_TEST_GIT"),
             @"C:\Program Files\Git\cmd\git.exe", @"D:\Program Files\Git\cmd\git.exe");
@@ -798,14 +814,8 @@ static class Program
         foreach (var root in SearchRoots.Prepend(CloneRoot).Distinct(StringComparer.OrdinalIgnoreCase))
         {
             string d = Path.Combine(root, name);
-            if (!Directory.Exists(d)) continue;
-            if (!Directory.Exists(Path.Combine(d, ".git")))
-            {
-                Warn($"{d} exists but is not a git clone (no .git) - empty stub skipped");
-                continue;
-            }
-            string url = GitOut(d, "remote", "get-url", "origin");
-            if (OriginMatchesRepo(url, fullName)) return d;
+            CloneSighting hit = ProbeClonePath(d, fullName);
+            if (CloneResolve.IsUsable(hit.Kind)) return hit.Path;
         }
         return null;
     }
@@ -822,34 +832,47 @@ static class Program
             || url.Contains(Owner + "/" + FomprepRepoAlias, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>FR #792: one search-root probe with bounded git remote/status.</summary>
+    static CloneSighting ProbeClonePath(string d, string fullName)
+    {
+        if (!Directory.Exists(d))
+            return new CloneSighting(d, CloneKind.Missing);
+        if (!Directory.Exists(Path.Combine(d, ".git")))
+        {
+            Warn($"{d} exists but is not a git clone (no .git) - empty stub skipped");
+            return new CloneSighting(d, CloneKind.Stub);
+        }
+        string? url = GitOutTimed(d, GitProbeTimeoutMs, "remote", "get-url", "origin");
+        if (url == null)
+        {
+            Warn($"{d}: git remote get-url timed out after {GitProbeTimeoutMs}ms - skipped (FR #792)");
+            return new CloneSighting(d, CloneKind.TimedOut);
+        }
+        if (!OriginMatchesRepo(url, fullName))
+            return new CloneSighting(d, CloneKind.WrongOrigin);
+        string? porcelain = GitOutTimed(d, GitProbeTimeoutMs, "status", "--porcelain");
+        if (porcelain == null)
+        {
+            Warn($"{d}: git status timed out after {GitProbeTimeoutMs}ms - skipped (FR #792)");
+            return new CloneSighting(d, CloneKind.TimedOut);
+        }
+        bool dirty = porcelain.Length > 0;
+        return new CloneSighting(d, dirty ? CloneKind.Dirty : CloneKind.Clean);
+    }
+
     static string? EnsureClone(string name, string fullName, string branch, bool alwaysPull, bool preferClean)
     {
         // FR #240: a valid clone with uncommitted changes is usable (warn, skip pull).
         // preferClean is unused for selection: dirty must never be skipped.
         _ = preferClean;
-        var sightings = new List<CloneSighting>();
-        foreach (var root in SearchRoots.Prepend(CloneRoot).Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            string d = Path.Combine(root, name);
-            if (!Directory.Exists(d))
-            {
-                sightings.Add(new CloneSighting(d, CloneKind.Missing));
-                continue;
-            }
-            if (!Directory.Exists(Path.Combine(d, ".git")))
-            {
-                Warn($"{d} exists but is not a git clone (no .git) - empty stub skipped");
-                sightings.Add(new CloneSighting(d, CloneKind.Stub));
-                continue;
-            }
-            if (!OriginMatchesRepo(GitOut(d, "remote", "get-url", "origin"), fullName))
-            {
-                sightings.Add(new CloneSighting(d, CloneKind.WrongOrigin));
-                continue;
-            }
-            bool dirty = GitOut(d, "status", "--porcelain").Length > 0;
-            sightings.Add(new CloneSighting(d, dirty ? CloneKind.Dirty : CloneKind.Clean));
-        }
+        // FR #792: ordered roots; timed git probes; short-circuit when preferred root is usable.
+        IEnumerable<string> orderedRoots = SearchRoots.Prepend(CloneRoot).Distinct(StringComparer.OrdinalIgnoreCase);
+        var sightings = CloneResolve.CollectSightings(
+            orderedRoots,
+            CloneRoot,
+            name,
+            d => ProbeClonePath(d, fullName),
+            shortCircuitPreferredUsable: true);
         string? dir = CloneResolve.SelectUsable(sightings, out string? pickReason);
         if (dir == null)
         {
@@ -1187,6 +1210,17 @@ static class Program
 
     static (int, string, string) Capture(string exe, string? cwd, params string[] args)
     {
+        var (rc, o, e, _) = CaptureTimed(exe, cwd, timeoutMs: 0, args);
+        return (rc, o, e);
+    }
+
+    /// <summary>FR #792: optional WaitForExit timeout; timedOut=true when killed.</summary>
+    static (int ExitCode, string StdOut, string StdErr, bool TimedOut) CaptureTimed(
+        string exe,
+        string? cwd,
+        int timeoutMs,
+        params string[] args)
+    {
         var psi = new ProcessStartInfo(exe) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true,
             StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8 };
         if (cwd != null) psi.WorkingDirectory = cwd;
@@ -1194,9 +1228,27 @@ static class Program
         psi.Environment["GIT_TERMINAL_PROMPT"] = "0";
         using var p = Process.Start(psi)!;
         var so = p.StandardOutput.ReadToEndAsync(); var se = p.StandardError.ReadToEndAsync();
-        p.WaitForExit();
-        Log($"$ {Path.GetFileName(exe)} {string.Join(' ', args.Select(Quote))} -> {p.ExitCode}");
-        return (p.ExitCode, so.Result, se.Result);
+        bool timedOut = false;
+        if (timeoutMs > 0)
+        {
+            if (!p.WaitForExit(timeoutMs))
+            {
+                timedOut = true;
+                try { p.Kill(entireProcessTree: true); } catch { try { p.Kill(); } catch { } }
+                try { p.WaitForExit(3_000); } catch { }
+            }
+        }
+        else
+        {
+            p.WaitForExit();
+        }
+        string outText = "";
+        string errText = "";
+        try { outText = so.Result; } catch { }
+        try { errText = se.Result; } catch { }
+        int code = timedOut ? -1 : p.ExitCode;
+        Log($"$ {Path.GetFileName(exe)} {string.Join(' ', args.Select(Quote))} -> {(timedOut ? "timeout" : code.ToString())}");
+        return (code, outText, errText, timedOut);
     }
 
     static int RunTo(string exe, string? cwd, params string[] args)
@@ -1208,6 +1260,15 @@ static class Program
     }
 
     static string GitOut(string dir, params string[] args) => Capture(Git, dir, args).Item2.Trim();
+
+    /// <summary>FR #792: null when the probe hits the timeout (caller marks TimedOut).</summary>
+    static string? GitOutTimed(string dir, int timeoutMs, params string[] args)
+    {
+        var (rc, o, _, timedOut) = CaptureTimed(Git, dir, timeoutMs, args);
+        if (timedOut) return null;
+        _ = rc;
+        return o.Trim();
+    }
 
     static string Quote(string a) => a.Length > 0 && !a.Any(c => char.IsWhiteSpace(c) || c == '"') ? a : "\"" + a.Replace("\"", "\\\"") + "\"";
     static string Trunc(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
@@ -1337,6 +1398,10 @@ PriorityAgent.exe [options]
   --smoke               real setup + one brief single-turn Grok launch that makes no changes
   --root <dir>          clone root for repos new to this machine (default: first existing X:\AI on C->D->E..Z,
                         else create \AI on the first ready drive in that order; env PRIORITY_AGENT_ROOT)
+  --search-remote       also probe Network/UNC mapped X:\AI and X:\repos (FR #792; default: fixed local
+                        disks only). Env PRIORITY_AGENT_SEARCH_REMOTE=1. Git probes use
+                        PRIORITY_AGENT_GIT_PROBE_MS (default 10000) and short-circuit when the
+                        preferred clone root already has a usable Clean|Dirty clone.
   --no-fuel-check       skip the Bob fuel report check
   --no-pause            don't wait for Enter before closing
   --passwords-dir <dir> where <repo>-connections.txt lives (<repo> = GitHub repo name, lowercase) (default C:\passwords, env PRIORITY_AGENT_PASSWORDS);
