@@ -65,16 +65,40 @@ public static class AiRoot
     }
 
     /// <summary>
+    /// True when the drive letter is ready and a fixed local disk (not Network/UNC map).
+    /// FR #792: default search skips slow UNC / network roots unless opted in.
+    /// </summary>
+    public static bool IsLocalFixedDrive(char letter)
+    {
+        try
+        {
+            var di = new DriveInfo(letter + @":\");
+            return di.IsReady && di.DriveType == DriveType.Fixed;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Search roots for existing clones: preferred clone root first, then every
     /// existing X:\AI and X:\repos on ready drives (C→Z).
+    /// FR #792: by default only fixed local disks; pass <paramref name="includeRemote"/>
+    /// or set PRIORITY_AGENT_SEARCH_REMOTE / --search-remote to also probe Network maps.
     /// </summary>
     public static string[] BuildSearchRoots(
         string cloneRoot,
         Func<char, bool>? driveReady = null,
-        Func<string, bool>? exists = null)
+        Func<string, bool>? exists = null,
+        bool includeRemote = false,
+        Func<char, bool>? driveSearchable = null)
     {
         driveReady ??= DriveReady;
         exists ??= Directory.Exists;
+        driveSearchable ??= includeRemote
+            ? driveReady
+            : (c => driveReady(c) && IsLocalFixedDrive(c));
         var list = new List<string>();
 
         void Add(string? p)
@@ -89,7 +113,7 @@ public static class AiRoot
         Add(cloneRoot);
         foreach (char letter in DriveOrder())
         {
-            if (!driveReady(letter)) continue;
+            if (!driveSearchable(letter)) continue;
             string ai = AiPath(letter);
             if (exists(ai)) Add(ai);
             string repos = Path.Combine(letter + @":\", "repos");

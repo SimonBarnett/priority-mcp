@@ -24,6 +24,11 @@ var checks = new List<(string Name, Action Run)>
     ("AI root prefers existing C:\\AI over later drives", TestAiRootPrefersExistingC),
     ("AI root skips missing D: and creates on first ready drive", TestAiRootCreatesOnFirstReady),
     ("AI root search lists AI and repos across ready drives", TestAiRootBuildSearchRoots),
+    ("FR-792: default search skips non-local drives", TestFr792SearchSkipsRemoteByDefault),
+    ("FR-792: includeRemote keeps network-mapped roots", TestFr792SearchRemoteOptIn),
+    ("FR-792: short-circuit preferred usable stops further probes", TestFr792ShortCircuitPreferredUsable),
+    ("FR-792: preferred missing still probes later roots", TestFr792PreferredMissingContinues),
+    ("FR-792: TimedOut described and not selectable", TestFr792TimedOutNotUsable),
     ("saved MEDATECH empty answer binds MEDATECH; prompt has [MEDATECH] not OS user", TestSavedLoginEmptyAnswer),
     ("FR-681: saved last-used login skips Ask; source is saved", TestFr681SavedSkipsAsk),
     ("FR-681: no saved login still asks interactively", TestFr681NoSavedStillAsks),
@@ -441,7 +446,8 @@ static void TestAiRootBuildSearchRoots()
         driveReady: c => c is 'C' or 'E',
         exists: p => p.Equals(@"C:\AI", StringComparison.OrdinalIgnoreCase)
             || p.Equals(@"E:\AI", StringComparison.OrdinalIgnoreCase)
-            || p.Equals(@"E:\repos", StringComparison.OrdinalIgnoreCase));
+            || p.Equals(@"E:\repos", StringComparison.OrdinalIgnoreCase),
+        includeRemote: true);
     Assert(roots.Length >= 3, "expected preferred + E:\\AI + E:\\repos");
     Assert(string.Equals(roots[0], Path.GetFullPath(@"C:\AI"), StringComparison.OrdinalIgnoreCase),
         "preferred clone root must be first");
@@ -451,6 +457,91 @@ static void TestAiRootBuildSearchRoots()
         "must include existing repos roots");
     Assert(!roots.Any(r => r.StartsWith(@"D:\", StringComparison.OrdinalIgnoreCase)),
         "must not invent paths on drives that are not ready");
+}
+
+static void TestFr792SearchSkipsRemoteByDefault()
+{
+    string[] roots = AiRoot.BuildSearchRoots(
+        @"C:\AI",
+        driveReady: c => c is 'C' or 'Z',
+        exists: p => p.Equals(@"C:\AI", StringComparison.OrdinalIgnoreCase)
+            || p.Equals(@"Z:\AI", StringComparison.OrdinalIgnoreCase),
+        includeRemote: false,
+        driveSearchable: c => c == 'C');
+    Assert(roots.Any(r => r.Equals(Path.GetFullPath(@"C:\AI"), StringComparison.OrdinalIgnoreCase)),
+        "preferred / local C:\\AI must remain");
+    Assert(!roots.Any(r => r.StartsWith(@"Z:\", StringComparison.OrdinalIgnoreCase)),
+        "network-mapped Z:\\AI must be skipped without --search-remote");
+}
+
+static void TestFr792SearchRemoteOptIn()
+{
+    string[] roots = AiRoot.BuildSearchRoots(
+        @"C:\AI",
+        driveReady: c => c is 'C' or 'Z',
+        exists: p => p.Equals(@"C:\AI", StringComparison.OrdinalIgnoreCase)
+            || p.Equals(@"Z:\AI", StringComparison.OrdinalIgnoreCase),
+        includeRemote: true);
+    Assert(roots.Any(r => r.Equals(Path.GetFullPath(@"Z:\AI"), StringComparison.OrdinalIgnoreCase)),
+        "--search-remote / includeRemote must keep Z:\\AI");
+}
+
+static void TestFr792ShortCircuitPreferredUsable()
+{
+    int probes = 0;
+    var roots = new[] { @"C:\AI", @"Z:\AI", @"M:\AI" };
+    var sightings = CloneResolve.CollectSightings(
+        roots,
+        @"C:\AI",
+        "priority-mcp",
+        d =>
+        {
+            probes++;
+            if (d.StartsWith(@"C:\", StringComparison.OrdinalIgnoreCase))
+                return new CloneSighting(Path.GetFullPath(d), CloneKind.Dirty);
+            return new CloneSighting(Path.GetFullPath(d), CloneKind.Clean);
+        },
+        shortCircuitPreferredUsable: true);
+    Assert(probes == 1, $"preferred usable must stop after one probe, got {probes}");
+    Assert(sightings.Count == 1 && sightings[0].Kind == CloneKind.Dirty, "only preferred sighting");
+    Assert(CloneResolve.SelectUsable(sightings, out _) != null, "preferred dirty must be usable");
+}
+
+static void TestFr792PreferredMissingContinues()
+{
+    int probes = 0;
+    var roots = new[] { @"C:\AI", @"D:\AI" };
+    var sightings = CloneResolve.CollectSightings(
+        roots,
+        @"C:\AI",
+        "priority-mcp",
+        d =>
+        {
+            probes++;
+            if (d.StartsWith(@"C:\", StringComparison.OrdinalIgnoreCase))
+                return new CloneSighting(Path.GetFullPath(d), CloneKind.Missing);
+            return new CloneSighting(Path.GetFullPath(d), CloneKind.Clean);
+        },
+        shortCircuitPreferredUsable: true);
+    Assert(probes == 2, $"preferred missing must continue; probes={probes}");
+    Assert(sightings.Count == 2, "both roots probed");
+    string? chosen = CloneResolve.SelectUsable(sightings, out _);
+    Assert(chosen != null && chosen.StartsWith(@"D:\", StringComparison.OrdinalIgnoreCase),
+        "later clean clone must still win");
+}
+
+static void TestFr792TimedOutNotUsable()
+{
+    var sightings = new[]
+    {
+        new CloneSighting(@"Z:\AI\priority-mcp", CloneKind.TimedOut),
+        new CloneSighting(@"C:\AI\priority-mcp", CloneKind.Clean),
+    };
+    Assert(CloneResolve.Describe(sightings[0]).Contains("timed out", StringComparison.OrdinalIgnoreCase),
+        "TimedOut must be described");
+    Assert(!CloneResolve.IsUsable(CloneKind.TimedOut), "TimedOut must not be usable");
+    string? chosen = CloneResolve.SelectUsable(sightings, out _);
+    Assert(chosen == @"C:\AI\priority-mcp", "Clean after TimedOut must still be selected");
 }
 
 static void TestSavedLoginEmptyAnswer()
