@@ -204,6 +204,8 @@ static class Program
         Log($"=== start args: {logArgs}");
 
         // AI workspace root: --root / PRIORITY_AGENT_ROOT, else find or create X:\AI (C→D→E…Z).
+        // FR #794: phase timing lines are additive alongside existing Info/PASS.
+        var swPhase = Stopwatch.StartNew();
         if (!string.IsNullOrWhiteSpace(CloneRootOverride))
         {
             CloneRoot = Path.GetFullPath(CloneRootOverride.Trim());
@@ -224,9 +226,14 @@ static class Program
             });
             if (!created) Info($"AI root: {CloneRoot}");
         }
+        Phase("airoot_resolve", swPhase.ElapsedMilliseconds, root: CloneRoot);
+
+        swPhase.Restart();
         SearchRoots = AiRoot.BuildSearchRoots(CloneRoot, includeRemote: SearchRemote);
+        Phase("search_roots", swPhase.ElapsedMilliseconds, root: CloneRoot, extra: $"count={SearchRoots.Length}");
         Log($"clone root: {CloneRoot}; search-remote={SearchRemote}; git-probe-ms={GitProbeTimeoutMs}; search: {string.Join(", ", SearchRoots)}");
 
+        swPhase.Restart();
         string? git = Which("git.exe", Environment.GetEnvironmentVariable("PRIORITY_AGENT_TEST_GIT"),
             @"C:\Program Files\Git\cmd\git.exe", @"D:\Program Files\Git\cmd\git.exe");
         string? gh = Which("gh.exe", Environment.GetEnvironmentVariable("PRIORITY_AGENT_TEST_GH"),
@@ -245,7 +252,7 @@ static class Program
         if (grok != null) DiscoveredClis.Add(new FoundCli(AgentCliKind.Grok, grok));
         if (cursorBin != null) DiscoveredClis.Add(new FoundCli(AgentCliKind.Cursor, cursorBin));
         if (opencodeBin != null) DiscoveredClis.Add(new FoundCli(AgentCliKind.OpenCode, opencodeBin));
-
+        Phase("cli_discover", swPhase.ElapsedMilliseconds, extra: $"count={DiscoveredClis.Count}");
         if (CliExplicit)
         {
             ChosenExe = CliLaunch.ResolveExecutable(ChosenCli, Home, new[]
@@ -280,12 +287,15 @@ static class Program
                          ?? EnsureClone(FomprepRepoAlias, FomprepFullName, "main", alwaysPull: true, preferClean: false)
                          ?? throw new Exception("priority-mcp clone unavailable");
         string skillsDir = Path.Combine(fomprep, ".grok", "skills");
+        swPhase.Restart();
         int skillCount = Directory.Exists(skillsDir) ? Directory.GetDirectories(skillsDir).Count(d => File.Exists(Path.Combine(d, "SKILL.md"))) : 0;
+        Phase("skills_count", swPhase.ElapsedMilliseconds, path: skillsDir, extra: $"count={skillCount}");
         Check(skillCount > 0, $"skills in {skillsDir}: {skillCount}");
 
         // ---- 2. customers from GitHub topic ------------------------------------------
         // FR #793: --general skips the gh topic scan; otherwise prefer short-TTL disk cache.
         Header($"[2] Customer repos (GitHub topic '{Topic}')");
+        swPhase.Restart();
         List<Customer> customers;
         if (General && !ListOnly)
         {
@@ -307,6 +317,7 @@ static class Program
             }
             Check(customers.Count > 0, $"{customers.Count} customer repo(s) tagged {Topic}");
         }
+        Phase("list_customers", swPhase.ElapsedMilliseconds, extra: $"count={customers.Count}");
         // FR #675: do not dump the numbered list then show Pick customer again.
         // Interactive path goes straight to PickList; --list keeps the dump.
         if (ListOnly)
@@ -441,8 +452,12 @@ static class Program
         }
         if (ChosenCli == CliKind.Grok)
         {
+            swPhase.Restart();
             EnsureGrokMcp(ChosenExe, fomprep);
+            Phase("mcp_register", swPhase.ElapsedMilliseconds);
+            swPhase.Restart();
             EnsureGrokSkillsPath(skillsDir);
+            Phase("skills_path", swPhase.ElapsedMilliseconds, path: skillsDir);
             if (!NoFuel) FuelCheck();
         }
         else
@@ -888,6 +903,8 @@ static class Program
         // preferClean is unused for selection: dirty must never be skipped.
         _ = preferClean;
         // FR #792: ordered roots; timed git probes; short-circuit when preferred root is usable.
+        // FR #794: sightings probe wall time.
+        var swSight = Stopwatch.StartNew();
         IEnumerable<string> orderedRoots = SearchRoots.Prepend(CloneRoot).Distinct(StringComparer.OrdinalIgnoreCase);
         var sightings = CloneResolve.CollectSightings(
             orderedRoots,
@@ -895,6 +912,8 @@ static class Program
             name,
             d => ProbeClonePath(d, fullName),
             shortCircuitPreferredUsable: true);
+        swSight.Stop();
+        Phase("ensureclone_sightings", swSight.ElapsedMilliseconds, root: CloneRoot, extra: $"repo={name} count={sightings.Count}");
         string? dir = CloneResolve.SelectUsable(sightings, out string? pickReason);
         if (dir == null)
         {
@@ -905,7 +924,10 @@ static class Program
                 if (DryRun && !alwaysPull) { Info($"would clone {fullName} -> {preferred}"); return null; }
                 Info($"cloning {fullName} -> {preferred}");
                 Directory.CreateDirectory(CloneRoot);
+                var swClone = Stopwatch.StartNew();
                 int rc = ConsoleWait.WithWait("clone", () => RunTo(Gh, CloneRoot, "repo", "clone", fullName, preferred));
+                swClone.Stop();
+                Phase("ensureclone_clone", swClone.ElapsedMilliseconds, path: preferred);
                 Check(rc == 0, $"cloned {fullName}");
                 return rc == 0 ? preferred : null;
             }
@@ -933,7 +955,10 @@ static class Program
             Info($"skip fetch (TTL {((int)pullTtl.TotalMinutes)}m): tip {before} still current from last pull");
             return dir;
         }
+        var swFetch = Stopwatch.StartNew();
         int frc = ConsoleWait.WithWait("fetch", () => RunTo(Git, dir, "fetch", "--prune", "--quiet", "origin"));
+        swFetch.Stop();
+        Phase("ensureclone_fetch", swFetch.ElapsedMilliseconds, path: dir);
         if (frc != 0) { Warn("git fetch failed (offline?) - using local copy"); return dir; }
         string behind = GitOut(dir, "rev-list", "--count", $"HEAD..origin/{branch}");
         bool dirtyNow = GitOut(dir, "status", "--porcelain").Length > 0;
@@ -943,7 +968,10 @@ static class Program
             return dir;
         }
         if (!alwaysPull) { Info($"{behind} commit(s) behind origin/{branch}; dry run - not fast-forwarding."); return dir; }
+        var swFf = Stopwatch.StartNew();
         int mrc = ConsoleWait.WithWait("fast-forward", () => RunTo(Git, dir, "merge", "--ff-only", "--quiet", $"origin/{branch}"));
+        swFf.Stop();
+        Phase("ensureclone_ff", swFf.ElapsedMilliseconds, path: dir);
         string after = GitOut(dir, "rev-parse", "--short", "HEAD");
         string afterFull = GitOut(dir, "rev-parse", "HEAD");
         string remote = GitOut(dir, "rev-parse", "--short", $"origin/{branch}");
@@ -1184,7 +1212,10 @@ static class Program
     static void GrokInspect(string grok, string workDir)
     {
         // FR #618: skills registration check is a grok process wait; spinner on the console only.
+        var sw = Stopwatch.StartNew();
         var (rc, outp, _) = ConsoleWait.WithWait("skills", () => Capture(grok, workDir, "inspect"));
+        sw.Stop();
+        Phase("grok_inspect", sw.ElapsedMilliseconds, path: workDir);
         Check(rc == 0 && outp.Contains("priority-", StringComparison.OrdinalIgnoreCase), "grok inspect sees priority-* skills");
         Check(rc == 0 && outp.Contains(McpName, StringComparison.OrdinalIgnoreCase), $"grok inspect sees MCP '{McpName}'");
     }
@@ -1193,7 +1224,10 @@ static class Program
     {
         // FR #616: spinner on the blocking fuel report GET. Continue-anyway prompt stays outside WithWait.
         // FR #677: read pcent.grok-build / weekly (xAI remaining); grok-chat is Cursor Sand only.
+        var sw = Stopwatch.StartNew();
         var fetched = FuelReportFetch.Run(FetchFuelReportOnce);
+        sw.Stop();
+        Phase("fuel_report", sw.ElapsedMilliseconds);
         if (fetched.Ok)
         {
             try
@@ -1435,6 +1469,9 @@ static class Program
     static void Summary() => Color(Fails == 0 ? ConsoleColor.Green : ConsoleColor.Red, $"\nRESULT: {(Fails == 0 ? "PASS" : $"{Fails} FAIL(S)")}  (log: {LogFile})");
     static void Header(string s) => Color(ConsoleColor.Cyan, "\n" + s);
     static void Info(string s) { Console.WriteLine("  " + s.Replace("\n", "\n  ")); Log(s); }
+    /// <summary>FR #794: additive phase timing line (console + launcher log).</summary>
+    static void Phase(string name, long durationMs, string? path = null, string? root = null, string? extra = null)
+        => Info(PhaseTiming.Format(name, durationMs, path, root, extra));
     static void Warn(string s) => Color(ConsoleColor.Yellow, "  WARN " + s);
     static void Err(string s) => Color(ConsoleColor.Red, "  ERROR " + s);
 

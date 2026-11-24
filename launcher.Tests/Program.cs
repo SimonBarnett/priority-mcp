@@ -84,6 +84,8 @@ var checks = new List<(string Name, Action Run)>
     ("FR-791: TTL skips fetch when stamp head==origin within window", TestFr791TtlSkipsWhenCurrent),
     ("FR-791: TTL does not skip when force-pull, stale, or head moved", TestFr791TtlDoesNotSkipWhenForcedOrStale),
     ("FR-791: EnsureClone wires TTL skip + --force-pull + stamp write", TestFr791EnsureCloneTtlWired),
+    ("FR-794: PhaseTiming format includes duration_ms and optional path", TestFr794PhaseTimingFormat),
+    ("FR-794: startup and EnsureClone emit phase timing lines", TestFr794PhaseTimingWired),
     ("FR-619: hours fetch TTY spinner settles done on success", TestFr619HoursFetchTtyDone),
     ("FR-619: hours fetch failure keeps detail and does not print done", TestFr619HoursFetchFailNoDone),
     ("FR-619: hours fetch source wraps the GET; relaunch SKIP stays", TestFr619HoursFetchWired),
@@ -1477,6 +1479,38 @@ static void TestFr791EnsureCloneTtlWired()
     Assert(readme.Contains("priority-agent-last-pull.json", StringComparison.Ordinal)
         && readme.Contains("PRIORITY_AGENT_CLONE_PULL_TTL_MIN", StringComparison.Ordinal),
         "README documents stamp + TTL env");
+}
+
+static void TestFr794PhaseTimingFormat()
+{
+    string line = PhaseTiming.Format("ensureclone_fetch", 104000, path: @"C:\AI\priority-mcp");
+    Assert(line == @"phase ensureclone_fetch duration_ms=104000 path=C:\AI\priority-mcp",
+        "format must match acceptance example shape");
+    string withRoot = PhaseTiming.Format("search_roots", 12, root: @"C:\AI", extra: "count=3");
+    Assert(withRoot == @"phase search_roots duration_ms=12 root=C:\AI count=3",
+        "root and extra fields must append after duration_ms");
+    Assert(PhaseTiming.Format("cli_discover", 0).StartsWith("phase cli_discover duration_ms=0", StringComparison.Ordinal),
+        "zero duration is valid");
+}
+
+static void TestFr794PhaseTimingWired()
+{
+    string src = ReadLauncherProgram();
+    Assert(src.Contains("Phase(\"airoot_resolve\"", StringComparison.Ordinal), "airoot_resolve phase");
+    Assert(src.Contains("Phase(\"search_roots\"", StringComparison.Ordinal), "search_roots phase");
+    Assert(src.Contains("Phase(\"cli_discover\"", StringComparison.Ordinal), "cli_discover phase");
+    Assert(src.Contains("Phase(\"skills_count\"", StringComparison.Ordinal), "skills_count phase");
+    Assert(src.Contains("Phase(\"list_customers\"", StringComparison.Ordinal), "list_customers phase");
+    Assert(src.Contains("Phase(\"fuel_report\"", StringComparison.Ordinal), "fuel_report phase");
+    Assert(src.Contains("Phase(\"mcp_register\"", StringComparison.Ordinal), "mcp_register phase");
+    int start = src.IndexOf("static string? EnsureClone(", StringComparison.Ordinal);
+    int end = src.IndexOf("static List<Customer> ListCustomers()", start, StringComparison.Ordinal);
+    string window = src[start..end];
+    Assert(window.Contains("Phase(\"ensureclone_sightings\"", StringComparison.Ordinal), "sightings phase inside EnsureClone");
+    Assert(window.Contains("Phase(\"ensureclone_fetch\"", StringComparison.Ordinal), "fetch phase inside EnsureClone");
+    Assert(window.Contains("Phase(\"ensureclone_ff\"", StringComparison.Ordinal), "ff phase inside EnsureClone");
+    Assert(window.Contains("Phase(\"ensureclone_clone\"", StringComparison.Ordinal), "clone phase inside EnsureClone");
+    Assert(src.Contains("FR #794", StringComparison.Ordinal), "Program must cite FR #794");
 }
 
 static void TestFr619HoursFetchTtyDone()
