@@ -21,6 +21,11 @@ var checks = new List<(string Name, Action Run)>
     ("dirty clone plus stub uses the dirty clone", TestDirtyClonePreferredOverStub),
     ("dirty clone only is usable", TestDirtyCloneOnly),
     ("no real clone lists every rejected candidate", TestNoRealCloneFatalListsCandidates),
+    ("FR-790: local Clean preferred over UNC/network Clean", TestFr790PreferLocalOverUnc),
+    ("FR-790: SelectUsable skips remote unless allowRemote", TestFr790SelectUsableSkipsRemote),
+    ("FR-790: vacant CloneRoot should clone even when UNC usable", TestFr790ShouldCloneWhenOnlyUnc),
+    ("FR-790: IsRemotePath detects UNC and network drive letters", TestFr790IsRemotePath),
+    ("FR-790: EnsureClone probes CloneRoot before remote roots", TestFr790EnsureCloneLocalFirstSource),
     ("AI root prefers existing C:\\AI over later drives", TestAiRootPrefersExistingC),
     ("AI root skips missing D: and creates on first ready drive", TestAiRootCreatesOnFirstReady),
     ("AI root search lists AI and repos across ready drives", TestAiRootBuildSearchRoots),
@@ -1325,6 +1330,76 @@ static void TestFr614CloneGuardsPreserved()
     Assert(window.Contains("Check(rc == 0, $\"cloned {fullName}\")", StringComparison.Ordinal)
         && window.Contains("Check(mrc == 0 && after == remote,", StringComparison.Ordinal),
         "final clone and fast-forward checks must remain outside the waits");
+}
+
+static void TestFr790PreferLocalOverUnc()
+{
+    DriveType Drive(char c) => c == 'Z' ? DriveType.Network : DriveType.Fixed;
+    bool Remote(string p) => CloneResolve.IsRemotePath(p, Drive);
+    var sightings = new[]
+    {
+        new CloneSighting(@"Z:\AI\priority-mcp", CloneKind.Clean),
+        new CloneSighting(@"C:\AI\priority-mcp", CloneKind.Dirty),
+    };
+    string? chosen = CloneResolve.SelectUsable(sightings, out string? reason, allowRemote: false, isRemote: Remote);
+    Assert(chosen == @"C:\AI\priority-mcp", "local dirty must win over UNC clean");
+    Assert(reason != null && reason.Contains("dirty", StringComparison.OrdinalIgnoreCase), "reason should cite dirty");
+}
+
+static void TestFr790SelectUsableSkipsRemote()
+{
+    DriveType Drive(char c) => c == 'Z' ? DriveType.Network : DriveType.Fixed;
+    bool Remote(string p) => CloneResolve.IsRemotePath(p, Drive);
+    var sightings = new[]
+    {
+        new CloneSighting(@"Z:\AI\priority-mcp", CloneKind.Clean),
+        new CloneSighting(@"C:\AI\priority-mcp", CloneKind.Missing),
+    };
+    Assert(CloneResolve.SelectUsable(sightings, out _, allowRemote: false, isRemote: Remote) == null,
+        "UNC-only usable must not be selected when allowRemote is false");
+    string? remote = CloneResolve.SelectUsable(sightings, out string? reason, allowRemote: true, isRemote: Remote);
+    Assert(remote == @"Z:\AI\priority-mcp", "allowRemote last resort may use UNC");
+    Assert(reason != null && reason.Contains("remote/UNC", StringComparison.OrdinalIgnoreCase),
+        "last-resort reason must say remote/UNC");
+}
+
+static void TestFr790ShouldCloneWhenOnlyUnc()
+{
+    Assert(CloneResolve.ShouldCloneToPreferred(null, preferredVacant: true, remoteUsableExists: true),
+        "vacant CloneRoot must clone locally even when UNC is usable");
+    Assert(!CloneResolve.ShouldCloneToPreferred(@"C:\AI\priority-mcp", preferredVacant: true, remoteUsableExists: true),
+        "local selection must not force another clone");
+    Assert(!CloneResolve.ShouldCloneToPreferred(null, preferredVacant: false, remoteUsableExists: true),
+        "non-vacant preferred must not auto-clone over a stub");
+}
+
+static void TestFr790IsRemotePath()
+{
+    Assert(CloneResolve.IsRemotePath(@"\\marchhare\c$\AI\priority-mcp"), "UNC path is remote");
+    Assert(CloneResolve.IsRemotePath(@"Z:\AI\priority-mcp", c => c == 'Z' ? DriveType.Network : DriveType.Fixed),
+        "mapped network Z: is remote");
+    Assert(!CloneResolve.IsRemotePath(@"C:\AI\priority-mcp", _ => DriveType.Fixed),
+        "fixed C: is local");
+}
+
+static void TestFr790EnsureCloneLocalFirstSource()
+{
+    string src = ReadLauncherProgram();
+    int start = src.IndexOf("static string? EnsureClone(", StringComparison.Ordinal);
+    int end = src.IndexOf("static List<Customer> ListCustomers()", start, StringComparison.Ordinal);
+    string window = src[start..end];
+    Assert(window.Contains("FR #790", StringComparison.Ordinal), "EnsureClone must cite FR #790");
+    Assert(window.Contains("ProbeCloneSighting(preferred", StringComparison.Ordinal),
+        "CloneRoot tip must be probed first");
+    Assert(window.Contains("CloneResolve.IsRemotePath(root)", StringComparison.Ordinal),
+        "local search must skip remote roots");
+    Assert(window.Contains("allowRemote: false", StringComparison.Ordinal),
+        "SelectUsable must default to local-only");
+    Assert(window.Contains("prefer CloneRoot over UNC/remote", StringComparison.OrdinalIgnoreCase)
+        || window.Contains("prefer CloneRoot over UNC/remote sightings", StringComparison.OrdinalIgnoreCase),
+        "clone log must say CloneRoot preferred over UNC");
+    Assert(window.Contains("FinishEnsureClone(preferred", StringComparison.Ordinal),
+        "usable CloneRoot tip must finish without probing UNC");
 }
 
 static void TestFr619HoursFetchTtyDone()

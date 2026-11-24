@@ -822,52 +822,87 @@ static class Program
             || url.Contains(Owner + "/" + FomprepRepoAlias, StringComparison.OrdinalIgnoreCase);
     }
 
+    static CloneSighting ProbeCloneSighting(string d, string fullName)
+    {
+        if (!Directory.Exists(d))
+            return new CloneSighting(d, CloneKind.Missing);
+        if (!Directory.Exists(Path.Combine(d, ".git")))
+        {
+            Warn($"{d} exists but is not a git clone (no .git) - empty stub skipped");
+            return new CloneSighting(d, CloneKind.Stub);
+        }
+        if (!OriginMatchesRepo(GitOut(d, "remote", "get-url", "origin"), fullName))
+            return new CloneSighting(d, CloneKind.WrongOrigin);
+        bool dirty = GitOut(d, "status", "--porcelain").Length > 0;
+        return new CloneSighting(d, dirty ? CloneKind.Dirty : CloneKind.Clean);
+    }
+
     static string? EnsureClone(string name, string fullName, string branch, bool alwaysPull, bool preferClean)
     {
         // FR #240: a valid clone with uncommitted changes is usable (warn, skip pull).
         // preferClean is unused for selection: dirty must never be skipped.
         _ = preferClean;
         var sightings = new List<CloneSighting>();
+        string preferred = Path.Combine(CloneRoot, name);
+
+        // FR #790: probe CloneRoot first. A local usable tip never requires UNC git.
+        CloneSighting preferredSight = ProbeCloneSighting(preferred, fullName);
+        sightings.Add(preferredSight);
+        if (preferredSight.Kind is CloneKind.Clean or CloneKind.Dirty)
+            return FinishEnsureClone(preferred, preferredSight.Kind, branch, alwaysPull, name);
+
+        bool preferredVacant = !Directory.Exists(preferred)
+            || !Directory.EnumerateFileSystemEntries(preferred).Any();
+
+        // Local (non-UNC / non-network) search roots next — skip remote until last resort.
         foreach (var root in SearchRoots.Prepend(CloneRoot).Distinct(StringComparer.OrdinalIgnoreCase))
         {
+            if (string.Equals(Path.GetFullPath(root), Path.GetFullPath(CloneRoot), StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (CloneResolve.IsRemotePath(root)) continue;
             string d = Path.Combine(root, name);
-            if (!Directory.Exists(d))
-            {
-                sightings.Add(new CloneSighting(d, CloneKind.Missing));
-                continue;
-            }
-            if (!Directory.Exists(Path.Combine(d, ".git")))
-            {
-                Warn($"{d} exists but is not a git clone (no .git) - empty stub skipped");
-                sightings.Add(new CloneSighting(d, CloneKind.Stub));
-                continue;
-            }
-            if (!OriginMatchesRepo(GitOut(d, "remote", "get-url", "origin"), fullName))
-            {
-                sightings.Add(new CloneSighting(d, CloneKind.WrongOrigin));
-                continue;
-            }
-            bool dirty = GitOut(d, "status", "--porcelain").Length > 0;
-            sightings.Add(new CloneSighting(d, dirty ? CloneKind.Dirty : CloneKind.Clean));
+            if (sightings.Any(s => string.Equals(s.Path, d, StringComparison.OrdinalIgnoreCase))) continue;
+            sightings.Add(ProbeCloneSighting(d, fullName));
         }
-        string? dir = CloneResolve.SelectUsable(sightings, out string? pickReason);
+
+        string? dir = CloneResolve.SelectUsable(sightings, out string? pickReason, allowRemote: false);
+        if (dir == null && CloneResolve.ShouldCloneToPreferred(null, preferredVacant, remoteUsableExists: false))
+        {
+            // Vacant CloneRoot: mint a local tip even when a UNC clone exists elsewhere.
+            if (DryRun && !alwaysPull) { Info($"would clone {fullName} -> {preferred}"); return null; }
+            Info($"cloning {fullName} -> {preferred} (prefer CloneRoot over UNC/remote sightings; FR #790)");
+            Directory.CreateDirectory(CloneRoot);
+            int rc = ConsoleWait.WithWait("clone", () => RunTo(Gh, CloneRoot, "repo", "clone", fullName, preferred));
+            Check(rc == 0, $"cloned {fullName}");
+            return rc == 0 ? preferred : null;
+        }
         if (dir == null)
         {
-            string preferred = Path.Combine(CloneRoot, name);
-            bool preferredVacant = !Directory.Exists(preferred) || !Directory.EnumerateFileSystemEntries(preferred).Any();
-            if (preferredVacant)
+            // Last resort: probe remote roots only when CloneRoot cannot receive a clone.
+            foreach (var root in SearchRoots.Distinct(StringComparer.OrdinalIgnoreCase))
             {
-                if (DryRun && !alwaysPull) { Info($"would clone {fullName} -> {preferred}"); return null; }
-                Info($"cloning {fullName} -> {preferred}");
-                Directory.CreateDirectory(CloneRoot);
-                int rc = ConsoleWait.WithWait("clone", () => RunTo(Gh, CloneRoot, "repo", "clone", fullName, preferred));
-                Check(rc == 0, $"cloned {fullName}");
-                return rc == 0 ? preferred : null;
+                if (!CloneResolve.IsRemotePath(root)) continue;
+                string d = Path.Combine(root, name);
+                if (sightings.Any(s => string.Equals(s.Path, d, StringComparison.OrdinalIgnoreCase))) continue;
+                sightings.Add(ProbeCloneSighting(d, fullName));
             }
-            Err(CloneResolve.FatalUnavailable(fullName, sightings));
-            return null;
+            dir = CloneResolve.SelectUsable(sightings, out pickReason, allowRemote: true);
+            if (dir == null)
+            {
+                Err(CloneResolve.FatalUnavailable(fullName, sightings));
+                return null;
+            }
+            Warn($"FR #790: using remote/UNC clone {dir} because CloneRoot tip is not vacant ({preferred})");
         }
-        if (pickReason != null && pickReason.Contains("dirty", StringComparison.OrdinalIgnoreCase))
+
+        CloneKind kind = sightings.FirstOrDefault(s => string.Equals(s.Path, dir, StringComparison.OrdinalIgnoreCase))?.Kind
+            ?? CloneKind.Clean;
+        return FinishEnsureClone(dir, kind, branch, alwaysPull, name);
+    }
+
+    static string? FinishEnsureClone(string dir, CloneKind kind, string branch, bool alwaysPull, string name)
+    {
+        if (kind == CloneKind.Dirty)
             Warn($"{dir} has uncommitted changes: using it and skipping pull");
         Info($"clone: {dir}");
         string before = GitOut(dir, "rev-parse", "--short", "HEAD");
