@@ -1462,7 +1462,9 @@ static void TestFr791EnsureCloneTtlWired()
 {
     string src = ReadLauncherProgram();
     int start = src.IndexOf("static string? EnsureClone(", StringComparison.Ordinal);
-    int end = src.IndexOf("static List<Customer> ListCustomers()", start, StringComparison.Ordinal);
+    // FR #793 adds forceRefresh; FR #791 window ends at ListCustomers (keep-both on merge).
+    int end = src.IndexOf("static List<Customer> ListCustomers(", start, StringComparison.Ordinal);
+    Assert(start >= 0 && end > start, "EnsureClone..ListCustomers window bounds");
     string window = src[start..end];
     Assert(window.Contains("ClonePullTtl.ShouldSkipFetch", StringComparison.Ordinal), "TTL gate before fetch");
     Assert(window.Contains("skip fetch (TTL", StringComparison.Ordinal), "TTL skip log line");
