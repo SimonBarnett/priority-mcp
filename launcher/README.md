@@ -58,10 +58,13 @@ PriorityAgent.exe --uninstall
    - Operator choices when the preferred path is a stub: (1) rename/remove the stub and reclone into the
      resolved AI root, or (2) set `PRIORITY_AGENT_ROOT` / `--root` to the folder that holds the real clone.
    - It does `fetch --prune`, then `merge --ff-only`, but only when the clone is on `main` and clean.
-     A valid clone with uncommitted changes is still usable: the launcher warns and skips the pull.
-     It never resets local work and never aborts only because the clone is dirty. An empty stub
-     (no `.git`) is skipped when another real clone exists. If no real clone exists, FATAL lists
-     each candidate path and why it was rejected.
+     **FR #791:** when a recent successful pull left `HEAD==origin/branch` (stamp
+     `.git/priority-agent-last-pull.json`, default TTL 45 minutes via
+     `PRIORITY_AGENT_CLONE_PULL_TTL_MIN`), warm starts **skip** the network fetch.
+     `--force-pull` always fetches. A valid clone with uncommitted changes is still usable: the
+     launcher warns and skips the pull (FR #240). It never resets local work and never aborts only
+     because the clone is dirty. An empty stub (no `.git`) is skipped when another real clone exists.
+     If no real clone exists, FATAL lists each candidate path and why it was rejected.
 2. It **loads the Priority MCP and skills** for every context. The registration is idempotent and user level:
    - **Default (FR #669):** the **hosted** catalog at **`https://mcp.ntsa.uk/mcp`**.
      `grok mcp add --transport http priority-catalog https://mcp.ntsa.uk/mcp`.
@@ -246,6 +249,7 @@ PriorityAgent.exe --mcp-catalog [<catalog dir>]                 fallback stdio c
 ```
 
 Other options: `--root <dir>` (clone root; default: first existing `X:\AI` on C:->Z:, else create `\AI` on the first ready drive; env `PRIORITY_AGENT_ROOT`),
+`--search-remote` (FR #792: also probe Network/UNC mapped `X:\AI` / `X:\repos`; default is fixed local disks only; env `PRIORITY_AGENT_SEARCH_REMOTE=1`; git probes use `PRIORITY_AGENT_GIT_PROBE_MS`, default 10000, and short-circuit when the preferred clone root already has a usable Clean|Dirty clone),
 `--cli grok|cursor|opencode` (env `PRIORITY_AGENT_CLI`; when omitted the issue #569 chooser runs),
 `--passwords-dir <dir>`, `--no-fuel-check`, `--no-pause`.
 

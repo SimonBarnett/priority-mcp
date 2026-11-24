@@ -256,4 +256,5 @@ books use `harvest-agent-skills` pointing at their home.)
 - UAT FAIL evidence issues that already filed gap FRs: fix remaining gaps in one PR that Closes the evidence issue and each gap; supersede narrower open PRs for the same gaps
 - UAT FAIL when Test-Fr571 suite-offline trips on an Assert that pins cursor.com/install and says irm in the same message string --- split the host or drop irm from the message; MSI park Test-Mrb574 expects exactly one FR-*.md per ISSUED row (duplicate FR-003-*.md fails the count).
 - priority-mcp UAT: if VERSION lags launcher-v* (e.g. 1.0.74 vs 2.0.0), catch-up VERSION in the docs PR before uat_release.py patch bump; attach PriorityAgent.exe+sha256 on vX.Y.Z; MSI N/A ok when exe-only like launcher-v2.0.0
+- FR tips must not ship VERSION bumps or UAT-LOG PASS blocks; MRB tip-fixes those out before PASS held on open digest Depends-on.
 - EnsureClone warm starts: stamp .git/priority-agent-last-pull.json after successful ff when HEAD==origin/branch; skip fetch within TTL (default 45m) unless --force-pull; keep dirty FR #240 skip-merge.
