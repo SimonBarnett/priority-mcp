@@ -1,6 +1,50 @@
 # UAT log — SimonBarnett/priority-mcp#0
 
 **Verdict:** UAT PASS  
+**Date (UTC):** 2026-11-24T00:04:37Z  
+**Commit tested:** 4abb195b57c17039e59dce5852bf372ed585b954 (origin/main after PR #783/#784)  
+**Seat / machine:** redqueen-668 (Windows). This seat did not author cycle PRs #757-#784 (gh author SimonBarnett).  
+**Repo clear check:** `gh issue list --state open` empty; `gh pr list --state open` empty.  
+**Cycle slice:** prior FAIL #781 gaps #779/#780 closed by #783/#784; re-verify this clear.
+
+## Cycle / PRI slice
+
+| id | criterion | result | evidence |
+|----|-----------|--------|----------|
+| PRI-01 | model/context/effort start settings | PASS | tests/Test-Fr738-Pri01Settings.ps1 exit 0 |
+| PRI-02 | no-token dialog + quit | PASS | tests/test_pri02_no_token_gate.py (pytest suite) |
+| PRI-03 | skills from mcp.ntsa.uk | PASS | POST https://mcp.ntsa.uk/mcp initialize HTTP 200 serverInfo mcp-priority 1.1.1 |
+| PRI-04 | harvest → priority-mcp via bob intake | PASS | pytest suite includes harvest-repo pin |
+| PRI-05 | MSI gaps vs launcher-v2.0.0 | PASS (N/A recorded) | docs/pri-05-msi-gaps-vs-launcher-v2.md; prior cycle |
+| PRI-07 | reuse launcher/priority.ico | PASS | pytest suite |
+| PRI-08 | vendor contract bob-ear | PASS | docs/vendor-contract-bob-ear.md; pytest suite |
+
+## Vision / harness
+
+| id | criterion | result | evidence |
+|----|-----------|--------|----------|
+| V1 | rules-version >= 2; connect without ask; prefer DEV; never echo secrets; ask before messaging | PASS | Test-Fr201-VisionRulesV2.ps1 |
+| V2 | Fr201 pin uses -ge 2 | PASS | Test-Mrb253-Fr201RulesVersionGe2.ps1 |
+| V3 | Catalog merge gate + honesty-box + ASCII-safe | PASS | v2/tools/Test-PriorityCatalog.ps1 exit 0 |
+| V-rename | FR #597 priority-mcp self-refs only | PASS | Test-Fr597-PriorityMcpRename.ps1 exit 0 |
+| Fr571 | Fake-installer suite stays offline | PASS | Test-Fr571-FakeInstallersOffline.ps1 (fixed #783) |
+| Mrb574 | MSI docs park mirrors | PASS | Test-Mrb574-PriorityAgentMsiPark.ps1 (fixed #784) |
+| Fr566 | Pack Priority Agent MSI | PASS | Test-Fr566-PackPriorityAgentMsi.ps1 (WiX cache refreshed) |
+| V7 | Form Prep EXECPREPLOCK/LASTPREPDATE live | SKIP | No C:\passwords\priority-mcp-connections.txt on redqueen; not CE-PRIORITY-DEV1. Same class as prior UATs. Not filed. |
+
+Root `tests/Test-*.ps1`: **40 PASS**, 0 FAIL. `tests/test_*.py`: **8 passed**. Catalog PASS. AT6 PASS.
+
+## Release
+
+- Catch-up: root `VERSION` was 1.0.74 while `launcher-v2.0.0` existed; docs PR aligns then bumps to **2.0.1**.
+- Tag/title from `uat_release.py` (FR #7122): **Priority Agent v2.0.1** / `v2.0.1`.
+
+## Gaps
+
+none
+
+---
+**Verdict:** UAT PASS  
 **Date (UTC):** 2026-11-06T16:30:00Z  
 **Commit tested:** 9d77951854348cdf06d80bb5b742f552d102efb3 (origin/main after PR #273)  
 **Seat / machine:** redqueen-16728 (Windows). This seat did not implement cycle PRs #268-#273.  
