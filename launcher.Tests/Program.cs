@@ -1504,7 +1504,9 @@ static void TestFr794PhaseTimingWired()
     Assert(src.Contains("Phase(\"fuel_report\"", StringComparison.Ordinal), "fuel_report phase");
     Assert(src.Contains("Phase(\"mcp_register\"", StringComparison.Ordinal), "mcp_register phase");
     int start = src.IndexOf("static string? EnsureClone(", StringComparison.Ordinal);
-    int end = src.IndexOf("static List<Customer> ListCustomers()", start, StringComparison.Ordinal);
+    // FR #793: ListCustomers(bool forceRefresh = false) — match prefix, not old zero-arg signature.
+    int end = src.IndexOf("static List<Customer> ListCustomers(", start, StringComparison.Ordinal);
+    Assert(start >= 0 && end > start, "EnsureClone..ListCustomers window bounds");
     string window = src[start..end];
     Assert(window.Contains("Phase(\"ensureclone_sightings\"", StringComparison.Ordinal), "sightings phase inside EnsureClone");
     Assert(window.Contains("Phase(\"ensureclone_fetch\"", StringComparison.Ordinal), "fetch phase inside EnsureClone");
