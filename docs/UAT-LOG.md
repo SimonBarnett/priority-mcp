@@ -1,6 +1,47 @@
 # UAT log — SimonBarnett/priority-mcp#0
 
 **Verdict:** UAT PASS  
+**Date (UTC):** 2026-11-24T15:02:03Z  
+**Commit tested:** 790fc0143e96e4f1ffc85c73527100523c0d92d7 (origin/main after cold-start #790-#794 / digest #789 last-child close)  
+**Seat / machine:** flamingo-17068 (Windows). This seat did not author cycle PRs #790-#808.  
+**Repo clear check:** closed stale digest #789 (children #790-#794 already CLOSED); `gh issue list --state open` empty; `gh pr list --state open` empty.
+
+## Cycle slice (cold-start performance)
+
+| id | criterion | result | evidence |
+|----|-----------|--------|----------|
+| FR-790 | Prefer local CloneRoot over UNC EnsureClone | PASS (via #792) | `AiRoot` Fixed-drive search; FR-792 launcher.Tests PASS; #790 closed with #804 |
+| FR-791 | EnsureClone TTL skip fetch when tip current | PASS | launcher.Tests FR-791 x3 PASS |
+| FR-792 | Bound git probes; skip UNC by default; short-circuit preferred | PASS | launcher.Tests FR-792 x5 PASS |
+| FR-793 | Defer/cache ListCustomers gh topic scan | PASS | launcher.Tests FR-793 x2 PASS |
+| FR-794 | Startup phase timing lines | PASS | launcher.Tests FR-794 x2 PASS |
+
+## Vision / harness
+
+| id | criterion | result | evidence |
+|----|-----------|--------|----------|
+| V1 | rules-version >= 2; connect without ask; prefer DEV; never echo secrets; ask before messaging | PASS | Test-Fr201-VisionRulesV2.ps1 |
+| V2 | Fr201 pin uses -ge 2 | PASS | Test-Mrb253-Fr201RulesVersionGe2.ps1 |
+| V3 | Catalog merge gate + honesty-box + ASCII-safe | PASS | v2/tools/Test-PriorityCatalog.ps1 exit 0 |
+| V-rename | FR #597 priority-mcp self-refs only | PASS | Test-Fr597-PriorityMcpRename.ps1 |
+| PRI-01..08 | prior Priority Agent client gates | PASS | prior pins still green in 40 Test-*.ps1 |
+| V7 | Form Prep EXECPREPLOCK/LASTPREPDATE live | SKIP | No C:\passwords\priority-mcp-connections.txt on flamingo; not CE-PRIORITY-DEV1. Same class as prior UATs. Not filed. |
+
+Root `tests/Test-*.ps1`: **40 PASS**, 0 FAIL. `tests/test_*.py`: **8 passed**. Catalog PASS. launcher.Tests: **116 PASS** exit 0. mcp.ntsa.uk initialize HTTP 200 (mcp-priority 1.1.1).
+
+## Release
+
+- Catch-up: tip `VERSION` was 2.0.1 while `v2.0.2` existed; align then bump to **2.0.3**.
+- Tag/title from `uat_release.py` (FR #7122): **Priority Agent v2.0.3** / `v2.0.3`.
+
+## Gaps
+
+none
+
+---
+ UAT log — SimonBarnett/priority-mcp#0
+
+**Verdict:** UAT PASS  
 **Date (UTC):** 2026-11-24T00:04:37Z  
 **Commit tested:** 4abb195b57c17039e59dce5852bf372ed585b954 (origin/main after PR #783/#784)  
 **Seat / machine:** redqueen-668 (Windows). This seat did not author cycle PRs #757-#784 (gh author SimonBarnett).  
