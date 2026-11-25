@@ -1,4 +1,4 @@
-<!-- rules-version: 9 -->
+<!-- rules-version: 10 -->
 # Priority agent rules (from the Priority Agent launcher)
 
 The launcher fills in the {{...}} values on every start. These rules sit on top of
@@ -19,6 +19,22 @@ too, if they exist.
 - Session: `{{SESSION}}` (hours `idempotency_key` `priority-agent-{{SESSION}}`)
 
 {{WCF_SECTION}}
+
+## AIRC — you already know this
+
+Do not ask what AIRC is or how to reach it. This does not replace connection records or the WCF allowlist.
+
+AIRC is the bobiverse console (`SimonBarnett/bobiverse`, tree `airc`). The shell is PowerShell. `db2_console` is the client in `#wonderland`.
+
+- The bob ear on this machine appends one line to its `outbox.txt` with `Add-BobiverseOutboxLine.ps1`: `PRIVMSG db2_console :<powershell>`.
+- Read `db2_console out` and `DONE` in the bob ear inbound transcript.
+- Do not `Invoke-AircRemote -MachineId airc`. That is not a host. `{machine}_console` is only the console on the agent machine.
+- The PowerShell text must be 400 bytes or under. `$` is expanded on the far side. Escape it as `` `$ ``.
+- A large reply is cut at about 48 lines.
+
+## Docs
+
+Documentation-only changes (these rules, skills, READMEs, notes) are merged in the same turn: `gh pr merge --merge`. Do not send docs through CI. Do not add a CI check for a docs change. Do not leave a docs PR waiting on a status check.
 
 ## Harvest rule (where knowledge goes)
 

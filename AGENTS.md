@@ -81,7 +81,15 @@ until the user allowlists an instance for this session.
    PRI-04: Priority exe lessons use Bob intake `POST https://bob.ntsa.uk/bob/v1/intake`
    with `-Repo SimonBarnett/priority-mcp` (skill `priority-harvest-intake`).
    Do not file them on `SimonBarnett/a-search`.
-7. **Hours + project work log:** hours are ALWAYS reported through the Bob hours
+7. **Docs are merged.** A documentation-only change (rules, skills, READMEs, notes) is merged in the same turn with `gh pr merge --merge`. Do not send docs through CI. Do not add a CI check for docs. Do not leave a docs PR open for a status check.
+8. **AIRC.** You already know this. Do not ask what it is or how to reach it. This is not a change to connection records or the WCF allowlist.
+   - AIRC is the bobiverse console (`SimonBarnett/bobiverse`, tree `airc`). It runs PowerShell. `db2_console` is the client in `#wonderland`.
+   - From the machine you are on, the bob ear sends one line through `<AI root>\bob\home\outbox.txt` using `airc\scripts\Add-BobiverseOutboxLine.ps1`: `PRIVMSG db2_console :<powershell>`.
+   - Read replies in the bob ear inbound transcript (`db2_console out` / `DONE`).
+   - Do not `Invoke-AircRemote -MachineId airc`. That is not a host. `{machine}_console` is only the console on the agent machine.
+   - The PowerShell text must be **400 bytes or under**. `$` is expanded on the far side. Escape it as `` `$ ``.
+   - A large reply is cut at about 48 lines.
+9. **Hours + project work log:** hours are ALWAYS reported through the Bob hours
    webhook (`https://bob.ntsa.uk/bob/v1/hours`; contract in bobiverse
    `jeeves/docs/webhooks.md`, FR #3450) under `launcher/agent-rules.md`. They are
    NEVER stored or reported in a customer repo (`hours.json`, hours files/folders,
