@@ -1,4 +1,4 @@
-<!-- rules-version: 10 -->
+<!-- rules-version: 11 -->
 # Priority agent rules (from the Priority Agent launcher)
 
 The launcher fills in the {{...}} values on every start. These rules sit on top of
@@ -22,7 +22,7 @@ too, if they exist.
 
 ## AIRC — you already know this
 
-Do not ask what AIRC is or how to reach it. This does not replace connection records or the WCF allowlist.
+Do not ask what AIRC is or how to reach it. Removing the launcher menu option and the `--airc` flags did not forbid AIRC. When the operator directs you to use AIRC, use it. This does not replace connection records or the WCF allowlist.
 
 AIRC is the bobiverse console (`SimonBarnett/bobiverse`, tree `airc`). The shell is PowerShell. `db2_console` is the client in `#wonderland`.
 

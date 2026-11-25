@@ -24,7 +24,8 @@ public sealed record WcfConfig(
 
 /// <summary>
 /// FR #348: Priority Agent uses fom-prep <c>v2/apps/priority-saas-wcf</c>
-/// (<c>bin/priority-wcf.mjs</c>), not airc remote-shell and not bobiverse #6026
+/// (<c>bin/priority-wcf.mjs</c>). The launcher menu option for AIRC was removed.
+/// That does not forbid AIRC when the operator directs it. Not bobiverse #6026.
 /// <c>priority_wcf.py</c>. Credentials never live in allowlist JSON or logs.
 /// </summary>
 public static class WcfSupport
@@ -304,8 +305,10 @@ public static class WcfSupport
         sb.AppendLine();
         sb.AppendLine("- Do Priority work (forms, form/procedure/report prepare, procs) through the");
         sb.AppendLine($"  fom-prep client `{ClientPath}` and skill `{ClientSkill}` (PR #338 / #346).");
-        sb.AppendLine("  Do **not** use an airc remote shell, WINRUN/WINACTIV, raw `priority-web-sdk`,");
-        sb.AppendLine("  OData for that work, or bobiverse `airc/scripts/priority_wcf.py` (#6026).");
+        sb.AppendLine("  The removed launcher menu and `--airc` flags are not this path. When the operator");
+        sb.AppendLine("  directs you to use AIRC, use it (`PRIVMSG db2_console` from the bob ear).");
+        sb.AppendLine("  Do **not** use WINRUN/WINACTIV, raw `priority-web-sdk`, OData for that work,");
+        sb.AppendLine("  or bobiverse `airc/scripts/priority_wcf.py` (#6026).");
         sb.AppendLine("- Allowlist: `%USERPROFILE%\\.priority-saas-wcf\\instances.json` (or env");
         sb.AppendLine("  `PRIORITY_SAAS_WCF_INSTANCES`). Tokens via `tokenFile` under `C:\\passwords\\`");
         sb.AppendLine("  or process env `PRIORITY_SAAS_TOKEN`. Never store tokens in git or `.priority-agent.json`.");
