@@ -205,7 +205,7 @@ these files. Tokens come from tokenFile or process env PRIORITY_SAAS_TOKEN (see 
 Rows that look like bobiverse #6026 (serverUrl + mode direct|relay) are ignored with a warning.
 
 Legacy keys `airc` and `airc_console` are ignored with a warning. The launcher does not open DCC and
-does not send airc shell PRIVMSGs. `--airc` and `--airc-console` stay rejected. The agent reaches `db2_console` itself: bob ear `PRIVMSG db2_console :<powershell>` (`launcher/agent-rules.md`). That is not a new connection-record rule.
+does not send airc shell PRIVMSGs. `--airc` and `--airc-console` stay rejected: that removed the menu option only. When the operator directs the agent to use AIRC, the agent uses the bob ear: `PRIVMSG db2_console :<powershell>` (`launcher/agent-rules.md`). That is not a new connection-record rule.
 Agent rules still require `priority-wcf.mjs` for allowlisted SaaS work and a harvest through Bobiverse intake (`tools\Report-FomprepIntakeIssue.ps1` / `Invoke-FomprepHarvest.ps1`) after every client session.
 
 

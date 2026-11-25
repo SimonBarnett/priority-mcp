@@ -11,6 +11,8 @@ description: >-
 
 You already know this. Do not ask the operator what AIRC is or how to connect.
 
+The launcher no longer has an AIRC menu option, and `--airc` / `--airc-console` are rejected. That only removed the menu. When the operator directs you to use AIRC, use it.
+
 AIRC is the bobiverse console (`SimonBarnett/bobiverse`, tree `airc`). The shell is PowerShell.
 
 ## Connect
