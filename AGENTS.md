@@ -89,7 +89,8 @@ until the user allowlists an instance for this session.
    - Do not `Invoke-AircRemote -MachineId airc`. That is not a host. `{machine}_console` is only the console on the agent machine.
    - The PowerShell text must be **400 bytes or under**. `$` is expanded on the far side. Escape it as `` `$ ``.
    - A large reply is cut at about 48 lines.
-9. **Hours + project work log:** hours are ALWAYS reported through the Bob hours
+9. **Priority code** is read from the `system` database, not the company database, and not from a `.prp` file. Procedures: `PROGRAMSTEXT` via `PROGRAMS.PROG` (`PROG` is not `T$EXEC`). Forms: `FORMTRIGTEXT` (`FORM` is `T$EXEC`). Reports: `REPCLMNSTEXT`. Interfaces: `LOADTEXT` via `T$LOAD`. Skill: `priority-read-procedure-code`.
+10. **Hours + project work log:** hours are ALWAYS reported through the Bob hours
    webhook (`https://bob.ntsa.uk/bob/v1/hours`; contract in bobiverse
    `jeeves/docs/webhooks.md`, FR #3450) under `launcher/agent-rules.md`. They are
    NEVER stored or reported in a customer repo (`hours.json`, hours files/folders,

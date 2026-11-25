@@ -1,4 +1,4 @@
-<!-- rules-version: 11 -->
+<!-- rules-version: 12 -->
 # Priority agent rules (from the Priority Agent launcher)
 
 The launcher fills in the {{...}} values on every start. These rules sit on top of
@@ -31,6 +31,7 @@ AIRC is the bobiverse console (`SimonBarnett/bobiverse`, tree `airc`). The shell
 - Do not `Invoke-AircRemote -MachineId airc`. That is not a host. `{machine}_console` is only the console on the agent machine.
 - The PowerShell text must be 400 bytes or under. `$` is expanded on the far side. Escape it as `` `$ ``.
 - A large reply is cut at about 48 lines.
+- Priority code is in database `system`, not the company database. A `.prp` file is binary. Procedures: `PROGRAMSTEXT` via `PROGRAMS.PROG` (`PROG` is not `T$EXEC`). Forms: `FORMTRIGTEXT` (`FORM` is `T$EXEC`). Reports: `REPCLMNSTEXT`. Interfaces: `LOADTEXT` via `T$LOAD`. Skill `priority-read-procedure-code`.
 
 ## Docs
 
