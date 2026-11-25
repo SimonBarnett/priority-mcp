@@ -81,7 +81,18 @@ until the user allowlists an instance for this session.
    PRI-04: Priority exe lessons use Bob intake `POST https://bob.ntsa.uk/bob/v1/intake`
    with `-Repo SimonBarnett/priority-mcp` (skill `priority-harvest-intake`).
    Do not file them on `SimonBarnett/a-search`.
-7. **Hours + project work log:** hours are ALWAYS reported through the Bob hours
+7. **Docs are merged.** A documentation-only change (rules, skills, READMEs, notes) is merged in the same turn with `gh pr merge --merge`. Do not send docs through CI. Do not add a CI check for docs. Do not leave a docs PR open for a status check.
+8. **AIRC is how you read an on-prem Priority.** You already know this. Do not ask the operator what AIRC is or how to connect.
+   - AIRC is the bobiverse console (`SimonBarnett/bobiverse`, tree `airc`). It runs PowerShell.
+   - From the machine you are on, the bob ear sends one line through `<AI root>\bob\home\outbox.txt` using `airc\scripts\Add-BobiverseOutboxLine.ps1`: `PRIVMSG <nick> :<powershell>`.
+   - `db2_console` is the AIRC client in `#wonderland` on the Priority SQL host. Message that nick directly. Read replies in the bob ear inbound transcript (`db2_console out` / `DONE`).
+   - Do not drive a fleet machine id named `airc`. That nick is not a host. `{machine}_console` (for example `redqueen_console`) is only the console on the agent machine itself.
+   - The remote command is PowerShell and must be **400 bytes or under** (`code=too_long` above that). `$` is expanded on the remote. Write Priority names as `` `$ `` so `T$EXEC` arrives intact.
+   - Dictionary and procedure rows are in the **`system`** database (`dbo.[T$EXEC]`: `ENAME`, `TYPE`, `TITLE`, `T$EXEC`), not in the company database. Company business data is in the company database.
+   - Prep files `system\prep\d{T$EXEC}.prp` are binary. Do not treat them as source text.
+   - Keep SQL results small. The console truncates at about 48 lines.
+   - SaaS form prep still uses `priority-wcf.mjs` when a WCF allowlist row exists. On-prem SQL and procedure code use `db2_console`.
+9. **Hours + project work log:** hours are ALWAYS reported through the Bob hours
    webhook (`https://bob.ntsa.uk/bob/v1/hours`; contract in bobiverse
    `jeeves/docs/webhooks.md`, FR #3450) under `launcher/agent-rules.md`. They are
    NEVER stored or reported in a customer repo (`hours.json`, hours files/folders,

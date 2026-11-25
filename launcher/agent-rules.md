@@ -1,4 +1,4 @@
-<!-- rules-version: 9 -->
+<!-- rules-version: 10 -->
 # Priority agent rules (from the Priority Agent launcher)
 
 The launcher fills in the {{...}} values on every start. These rules sit on top of
@@ -19,6 +19,22 @@ too, if they exist.
 - Session: `{{SESSION}}` (hours `idempotency_key` `priority-agent-{{SESSION}}`)
 
 {{WCF_SECTION}}
+
+## AIRC (on-prem Priority) — you already know this
+
+Do not ask what AIRC is or how to connect. AIRC is the bobiverse console (`SimonBarnett/bobiverse`, tree `airc`). It is a PowerShell shell.
+
+- The bob ear on **this** machine appends one line to its `outbox.txt` with `Add-BobiverseOutboxLine.ps1`: `PRIVMSG <nick> :<powershell>`.
+- `db2_console` is the AIRC client in `#wonderland` on the Priority SQL host. PRIVMSG that nick. Read `db2_console out` and `DONE` in the bob ear inbound transcript.
+- Do not `Invoke-AircRemote` a machine id `airc`. That is not a host. `{machine}_console` is only the console on the agent box.
+- The command must be 400 bytes or under. Remote PowerShell expands `$`. Escape it as `` `$ `` so `T$EXEC` survives.
+- Procedure dictionary is database `system`, table `dbo.[T$EXEC]` (`ENAME`, `TYPE`, `TITLE`, `T$EXEC`). The company database holds company data, not that dictionary. `system\prep\d{id}.prp` is binary.
+- Keep result sets small (the console keeps about 48 lines). `sqlcmd -E` from that shell.
+- WCF `priority-wcf.mjs` is for an allowlisted SaaS instance. On-prem SQL and procedure code go through `db2_console`.
+
+## Docs
+
+Documentation-only changes (these rules, skills, READMEs, notes) are merged in the same turn: `gh pr merge --merge`. Do not send docs through CI. Do not add a CI check for a docs change. Do not leave a docs PR waiting on a status check.
 
 ## Harvest rule (where knowledge goes)
 
