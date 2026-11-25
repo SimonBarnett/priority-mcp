@@ -32,13 +32,4 @@ PRIVMSG db2_console :hostname
 - About 48 lines come back. A bigger result is truncated. Filter in SQL or write a file on that host and print a short extract.
 - Do not print passwords. Do not put secrets in the PRIVMSG.
 
-## Where the code is
-
-- `sqlcmd -E` against the instance on that host.
-- Procedure and form dictionary rows are in database `system`, table `dbo.[T$EXEC]` (`ENAME`, `TYPE`, `TITLE`, `T$EXEC`). They are not in the company database.
-- Company business tables are in the company database.
-- `system\prep\d{T$EXEC}.prp` is a binary prep file, not source text.
-
-## What WCF is for
-
-Allowlisted SaaS form prep uses `priority-wcf.mjs`. On-prem SQL and procedure code use `db2_console`.
+This does not change connection records or the WCF allowlist. SaaS form prep still uses `priority-wcf.mjs` when an allowlist row exists.
