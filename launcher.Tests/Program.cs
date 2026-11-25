@@ -121,6 +121,15 @@ var checks = new List<(string Name, Action Run)>
     ("FR-635: PickList Down Enter selects first host and saves", TestFr635PickListSelectsAndSaves),
     ("FR-635: redirected numeric pick; Esc cancels", TestFr635RedirectedAndEsc),
     ("FR-635: Program wires /airc to AircSlashCommand", TestFr635ProgramWiresSlash),
+    ("FR-813: Plan MCP URL is plan.ntsa.uk", TestFr813PlanMcpPath),
+    ("FR-813: CredMan Enter reuses stored password", TestFr813CredManEnterReuse),
+    ("FR-813: CredMan typed username forces password prompt", TestFr813CredManTypedPassword),
+    ("FR-813: OData writes only active connection rows", TestFr813ODataActiveRowsOnly),
+    ("FR-813: connections file creates missing passwords dir", TestFr813ConnectionsCreateDir),
+    ("FR-813: session append airc block", TestFr813SessionAircAppend),
+    ("FR-813: dual POST customer then subfolder", TestFr813DualPostOrder),
+    ("FR-813: gitcust log redaction hides secrets", TestFr813GitcustLogRedaction),
+    ("FR-813: Program wires New customer to NewCustomerGitcustFlow", TestFr813ProgramWiresGitcust),
 };
 int failures = 0;
 foreach (var (name, run) in checks)
@@ -2171,6 +2180,117 @@ static void DeleteTempDirectory(string path)
     }
 }
 
+static void TestFr813PlanMcpPath()
+{
+    Assert(PlanSkillDagMcp.PlanMcpUrl.Contains("plan.ntsa.uk", StringComparison.Ordinal), "plan url");
+    Assert(PlanSkillDagMcp.UsesPlanMcp(PlanSkillDagMcp.PlanMcpUrl, planMode: true), "plan mode + mcp");
+    Assert(!PlanSkillDagMcp.UsesPlanMcp(PlanSkillDagMcp.PlanMcpUrl, planMode: false), "plan mode off");
+}
+
+static void TestFr813CredManEnterReuse()
+{
+    var d = MedatechCredManSession.Resolve("MEDATECH", typedUsername: null, enteredEmptyAtUsernamePrompt: true, hasStoredPassword: true);
+    Assert(d.Ok && d.Username == "MEDATECH" && !d.ShouldPromptPassword, "Enter reuses stored");
+}
+
+static void TestFr813CredManTypedPassword()
+{
+    var d = MedatechCredManSession.Resolve("MEDATECH", typedUsername: "OTHER", enteredEmptyAtUsernamePrompt: false, hasStoredPassword: true);
+    Assert(d.Ok && d.ShouldPromptPassword, "typed username asks password");
+    Assert(MedatechCredManSession.PasswordPromptMasked().Contains('*'), "masked prompt");
+}
+
+static void TestFr813ODataActiveRowsOnly()
+{
+    string fixture = Path.Combine(AppContext.BaseDirectory, "fixtures", "fr813-odata-connections.json");
+    using var doc = JsonDocument.Parse(File.ReadAllText(fixture));
+  var active = ODataCustomerConnections.ActiveRowsFromCustomerPayload(doc.RootElement);
+    Assert(active.Count == 2, "expected 2 active rows, got " + active.Count);
+    Assert(active.All(r => ODataCustomerConnections.IsActiveRow(r)), "all active");
+}
+
+static void TestFr813ConnectionsCreateDir()
+{
+    string root = NewTemp();
+    try
+    {
+        string dir = Path.Combine(root, "pw");
+        var writer = new CustomerConnectionsPasswordFile(dir, "demo");
+        string json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "fixtures", "fr813-odata-connections.json"));
+        using var doc = JsonDocument.Parse(json);
+        var result = writer.WriteFromOData(doc.RootElement);
+        Assert(Directory.Exists(dir), "passwords dir created");
+        Assert(File.Exists(result.Path), "connections file");
+        string text = File.ReadAllText(result.Path);
+        Assert(text.Contains("web", StringComparison.Ordinal) && !text.Contains("retired", StringComparison.Ordinal), "inactive skipped");
+        Assert(!text.Contains("FAKE_SECRET_2"), "inactive secret not written");
+    }
+    finally { DeleteTempDirectory(root); }
+}
+
+static void TestFr813SessionAircAppend()
+{
+    string root = NewTemp();
+    try
+    {
+        var writer = new CustomerConnectionsPasswordFile(Path.Combine(root, "pw"), "demo");
+        writer.WriteFromOData(JsonDocument.Parse("""{"ZEMG_CUSTCONECT_SUBFORM":[]}""").RootElement);
+        writer.AppendSessionRoute("airc", new Dictionary<string, string> { ["console"] = "demo_console" });
+        string text = File.ReadAllText(writer.FilePath);
+        Assert(text.Contains("[session-airc]", StringComparison.Ordinal), "session block");
+        Assert(text.Contains("demo_console", StringComparison.Ordinal), "airc host");
+    }
+    finally { DeleteTempDirectory(root); }
+}
+
+static void TestFr813DualPostOrder()
+{
+    var audit = new List<GitcustPostRecord>();
+    var posts = new List<string>();
+    var handler = new Fr813GitcustHandler(posts);
+    var client = new GitcustClient(new HttpClient(handler), endpoint: "https://bob.ntsa.uk/bob/v1/gitcust");
+    string root = NewTemp();
+    try
+    {
+        var answers = new Queue<string>(new[] { "1001", "", "DEMO", "acme", "SC263999", "Initial SC" });
+        int rc = NewCustomerGitcustFlow.Run(new NewCustomerGitcustFlow.RunContext
+        {
+            PasswordsDir = Path.Combine(root, "pw"),
+            Owner = "SimonBarnett",
+            Topic = "priority-customer",
+            Ask = _ => answers.Dequeue(),
+            Info = _ => { },
+            Err = _ => { },
+            Gitcust = client,
+            PlanMcpUrl = PlanSkillDagMcp.PlanMcpUrl,
+            PlanMode = true,
+            LastMedatechUsername = "MEDATECH",
+            HasStoredMedatechPassword = true,
+            PostAudit = audit,
+            FetchODataCustomerJson = (_, _) => Task.FromResult(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "fixtures", "fr813-odata-connections.json"))),
+        });
+        Assert(rc == 0, "flow exit 0");
+        Assert(audit.Count == 2, "two posts");
+        Assert(audit[0].Order == 1 && audit[0].Label == "customer", "customer first");
+        Assert(audit[1].Order == 2 && audit[1].Label == "subfolder", "subfolder second");
+        Assert(posts.Count == 2, "handler saw 2");
+    }
+    finally { DeleteTempDirectory(root); }
+}
+
+static void TestFr813GitcustLogRedaction()
+{
+    string redacted = GitcustRedaction.RedactPostBodyForLog("""{"customer":"x","password":"hunter2","token":"abc"}""");
+    Assert(redacted.Contains("***") && !redacted.Contains("hunter2"), redacted);
+}
+
+static void TestFr813ProgramWiresGitcust()
+{
+    string src = ReadLauncherProgram();
+    Assert(src.Contains("NewCustomerGitcustFlow.Run", StringComparison.Ordinal), "Program calls gitcust flow");
+    Assert(src.Contains("FR #813", StringComparison.Ordinal), "Program cites FR #813");
+}
+
 static void Assert(bool condition, string message)
 {
     if (!condition) throw new InvalidOperationException(message);
@@ -2216,5 +2336,17 @@ sealed class FixtureAircTransport : IAircTransport
     {
         UnselectedCalls++;
         return "default:" + operation;
+    }
+}
+
+sealed class Fr813GitcustHandler : HttpMessageHandler
+{
+    readonly List<string> _bodies;
+    public Fr813GitcustHandler(List<string> bodies) => _bodies = bodies;
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        if (request.Content != null)
+            _bodies.Add(request.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult());
+        return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK));
     }
 }

@@ -1,0 +1,10 @@
+{
+  "CUSTNAME": "DEMO",
+  "ZEMG_CUSTCONECT_SUBFORM": [
+    { "CONNNAME": "web", "ACTIVE": "Y", "HOST": "p.example.invalid", "USER": "u1", "PASSWORD": "FAKE_SECRET_1" },
+    { "CONNNAME": "retired", "ACTIVE": "N", "HOST": "old.example.invalid", "PASSWORD": "FAKE_SECRET_2" }
+  ],
+  "ZEMG_CUSTCONECTD_SUBFORM": [
+    { "CONNNAME": "wcf", "BOOLACTIVE": true, "TENANT": "t1", "TOKEN": "FAKE_PAT" }
+  ]
+}

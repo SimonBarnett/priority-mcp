@@ -350,7 +350,30 @@ static class Program
                 return 2;
             }
             if (haitchNew)
-                return Haitch($"new customer repo for {Ask("Customer name: ")} (tag it {Topic})");
+            {
+                // FR #813: Plan + CredMan + OData connections + dual POST /gitcust (replaces clipboard Haitch handoff).
+                Header("New customer (Bob /gitcust)");
+                var fetcher = new ODataCustomerFetcher();
+                int gitcustRc = NewCustomerGitcustFlow.Run(new NewCustomerGitcustFlow.RunContext
+                {
+                    PasswordsDir = PasswordsDir,
+                    Owner = Owner,
+                    Topic = Topic,
+                    Ask = Ask,
+                    Info = Info,
+                    Err = Err,
+                    LastMedatechUsername = LastUserFile.ReadUserLogin("medatech"),
+                    HasStoredMedatechPassword = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PRIORITY_AGENT_TEST_MEDATECH_PASSWORD")),
+                    PlanMode = PlanSkillDagMcp.PlanModeFromEnvironment() || string.Equals(Environment.GetEnvironmentVariable("PRIORITY_AGENT_GITCUST"), "1", StringComparison.Ordinal),
+                    FetchODataCustomerJson = async (baseUrl, cust) =>
+                    {
+                        string company = Environment.GetEnvironmentVariable("PRIORITY_AGENT_ODATA_COMPANY") ?? "demo";
+                        return await fetcher.FetchCustomerJsonAsync(baseUrl, company, cust, null, null).ConfigureAwait(false);
+                    },
+                });
+                Pause();
+                return gitcustRc == 0 ? 0 : gitcustRc;
+            }
             if (customerIndex >= 0)
                 cust = customers[customerIndex];
         }
