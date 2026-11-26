@@ -10,10 +10,11 @@
 
 | Repo | id | issue | title |
 |---|---|---|---|
-| priority-mcp | Parent | _(fill after file)_ | Digest: Priority deterministic WCF verbs (thin CLI + dual transport) |
-| priority-mcp | D0 | _(fill after file)_ | Digest: Shared thin WCF CLI package + verb contract |
-| priority-mcp | FR-A | _(fill after file)_ | Verb contract doc + JSON Schema + C:\passwords secret paths |
-| priority-mcp | FR-B | _(fill after file)_ | CLI auth mode password (tabula) alongside Bearer/PAT |
+| priority-mcp | Parent | [#834](https://github.com/SimonBarnett/priority-mcp/issues/834) | Digest: Priority deterministic WCF verbs (thin CLI + dual transport) |
+| priority-mcp | D0 | [#835](https://github.com/SimonBarnett/priority-mcp/issues/835) | Digest: Shared thin WCF CLI package + verb contract |
+| priority-mcp | FR-A | [#836](https://github.com/SimonBarnett/priority-mcp/issues/836) | Verb contract doc + JSON Schema + C:\passwords secret paths |
+| priority-mcp | FR-B | [#837](https://github.com/SimonBarnett/priority-mcp/issues/837) | CLI auth mode password (tabula) alongside Bearer/PAT |
+| priority-mcp | docs PR | [#833](https://github.com/SimonBarnett/priority-mcp/pull/833) | Park vision + FR index |
 
 Unfiled drafts (nested Digests D1–D6 and their FRs) stay in Plan work `plan-20261126-192700` until the next turn — anti-omnibus.
 
