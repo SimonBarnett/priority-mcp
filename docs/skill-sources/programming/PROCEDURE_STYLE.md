@@ -16,11 +16,21 @@ Priority-generic. CE examples are labeled.
 
 When editing existing stack triggers, bring headers up to this standard.
 
-## Debug pattern (CE example)
+## Debug on every step (CAST IRON)
 
-1. `#INCLUDE func/ZCLA_DEBUGUSR` (or site equivalent).
-2. Before includes, set `:RUN_BY` to a string naming Form/proc / column / trigger-or-step.
-3. Gate file logs on `:DEBUG = 1` writing to `:DEBUGFILE`.
+A new or rewritten trigger ships with a debug write on **every step**. Do not wait for a failure and do not gate the writes behind `:DEBUG = 0`.
+
+The file path is relative to `bin.95`. `'../../file'` is a file in the Priority root. Do not write the debug file to an absolute path outside that tree.
+
+```
+:DBG = '../../file';
+SELECT 'STEP', :VAR FROM DUMMY
+FORMAT ADDTO :DBG ;
+```
+
+Tag each step (`'PART'`, `'DEL'`, `'LOOP'`, `'INS'`, `'EXIT'`). `SELECT` needs `FROM DUMMY`. `FORMAT ADDTO` may be the next TEXT line when the probe does not fit in 68 characters. Remove the probes only when the user says the diagnosis is finished, then prepare again.
+
+Site `#INCLUDE` debug files remain available. They do not replace the per-step `FORMAT ADDTO` lines.
 
 ## FORMAT ADDTO FROM DUMMY (field wipe / chronological probes)
 
