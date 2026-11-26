@@ -32,11 +32,28 @@ Relative path `../../tmp/s.txt` resolves under the Priority tree
 (example: `E:\priority\tmp\s.txt`). Keep the path short so the line stays
 within 68 characters.
 
+`FORMAT ADDTO` paths are relative to `bin.95`. `'../../file'` is a file in
+the Priority root, next to `system` and `bin.95`. Do not write the debug
+file to an absolute path outside that tree (an agent drop folder is the
+wrong place; the person in Form Generator will not look there).
+
+When the column list does not fit on one 68-character line, store the
+relative path in a CHAR variable and continue the statement:
+
+```
+:DBG = '../../USAGE.DBG';
+SELECT :$.PART, :$$.PART, :PART FROM DUMMY
+FORMAT ADDTO :DBG ;
+```
+
+`:$.COL` is this form, `:$$.COL` is the parent. The file appears as
+`<PriorityRoot>/USAGE.DBG`.
+
 ## Failures
 
 | Mistake | Symptom |
 |---------|---------|
-| `SELECT …` on one TEXTLINE, `FORMAT ADDTO …` on the next | Form Prep parse error at or near symbol `FORMAT` |
+| `FORMAT ADDTO` on the next line, and the SELECT line has no `FROM` | Form Prep parse error at or near symbol `FORMAT` |
 | `SELECT :$.X FORMAT ADDTO …` with no `FROM` | Form Prep rejects (needs FROM; use `DUMMY`) |
 | Probe TEXT longer than 68 characters | SQL Msg 8152 string or binary data would be truncated |
 | Long absolute paths in the ADDTO argument | Same 68-char trap; prefer short `../../tmp/…` |
