@@ -10,13 +10,19 @@
 
 | Repo | id | issue | title |
 |---|---|---|---|
-| priority-mcp | Parent | [#834](https://github.com/SimonBarnett/priority-mcp/issues/834) | Digest: Priority deterministic WCF verbs (thin CLI + dual transport) |
-| priority-mcp | D0 | [#835](https://github.com/SimonBarnett/priority-mcp/issues/835) | Digest: Shared thin WCF CLI package + verb contract |
-| priority-mcp | FR-A | [#836](https://github.com/SimonBarnett/priority-mcp/issues/836) | Verb contract doc + JSON Schema + C:\passwords secret paths |
-| priority-mcp | FR-B | [#837](https://github.com/SimonBarnett/priority-mcp/issues/837) | CLI auth mode password (tabula) alongside Bearer/PAT |
-| priority-mcp | docs PR | [#833](https://github.com/SimonBarnett/priority-mcp/pull/833) | Park vision + FR index |
+| priority-mcp | Parent | #834 | Digest: Priority deterministic WCF verbs (thin CLI + dual transport) |
+| priority-mcp | D0 | #835 | Digest: Shared thin WCF CLI package + verb contract |
+| priority-mcp | D1 | #838 | Digest: Prepare family (form|proc|report|interface) via CLI |
+| priority-mcp | D2 | #839 | Digest: Smoke open/run (form|proc|report) |
+| priority-mcp | D3 | #840 | Digest: Entity create/edit without MSSQL |
+| priority-mcp | D4 | #841 | Digest: Shell recording in the DEV loop |
+| bobiverse | D5 | #10025 | Digest: airc relay transport (vendors CLI); Depends-on #9128 |
+| priority-mcp | D6 | #842 | Digest: MCP tools bind to in-repo CLI |
+| priority-mcp | FR-A | #836 | Verb contract doc + JSON Schema + C:\passwords secret paths |
+| priority-mcp | FR-B | #837 | CLI auth mode password (tabula) alongside Bearer/PAT |
+| priority-mcp | docs PR | #833 | Park vision + FR index (merged) |
 
-Unfiled drafts (nested Digests D1–D6 and their FRs) stay in Plan work `plan-20261126-192700` until the next turn — anti-omnibus.
+Child FRs under D1–D6 remain unfiled until each digest is sliced (anti-omnibus).
 
 ## Ultimate objective
 
@@ -72,15 +78,15 @@ LOCKED — **service** (thin CLI + transports). No product web UI.
 
 ## Nested Digests (index)
 
-| id | Home | Title | Depends-on |
-|---|---|---|---|
-| D0 | priority-mcp | Shared thin WCF CLI + verb contract | — |
-| D1 | priority-mcp | Prepare family | D0 |
-| D2 | priority-mcp | Smoke open/run | D1 |
-| D3 | priority-mcp | Create/edit without MSSQL | D0 |
-| D4 | priority-mcp | Shell recording in DEV loop | D1, D3 |
-| D5 | bobiverse | airc relay vendor transport | D0, D1, **#9128** |
-| D6 | priority-mcp | MCP tools bind to CLI | D0, D1, D2 |
+| id | Home | Issue | Title | Depends-on |
+|---|---|---|---|---|
+| D0 | priority-mcp | #835 | Shared thin WCF CLI + verb contract | #834 |
+| D1 | priority-mcp | #838 | Prepare family | #834 |
+| D2 | priority-mcp | #839 | Smoke open/run | #834, #835 |
+| D3 | priority-mcp | #840 | Create/edit without MSSQL | #834, #835 |
+| D4 | priority-mcp | #841 | Shell recording in DEV loop | #834 |
+| D5 | bobiverse | #10025 | airc relay vendor transport | priority-mcp#834/#835/#838, bobiverse#9128 |
+| D6 | priority-mcp | #842 | MCP tools bind to CLI | #834, #835 |
 
 ## Out of scope (this park)
 
