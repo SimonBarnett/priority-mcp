@@ -22,6 +22,7 @@ Authoring or heavily editing form triggers, SQLI procedures, or #INCLUDE bodies.
 ## Hard rules
 
 1. Banner with name + one-line purpose; `/* Inputs */` / `/* Outputs */` listing `:VAR`s; Heading / Sub-heading sections.
+1a. **Debug every step.** Each step of a new trigger writes `FORMAT ADDTO` to a `bin.95`-relative file (`'../../file'` in the Priority root). Tag the step. Do not gate it off and do not use a path outside the Priority tree. See `PROCEDURE_STYLE.md`.
 2. Update headers on existing stack triggers you touch.
 3. Debug: site debug `#INCLUDE`; set `:RUN_BY` before includes; gate on `:DEBUG=1` → `:DEBUGFILE`. Field-wipe probes: **priority-format-addto-debug** (`SELECT 'tag',:$.COL FROM DUMMY FORMAT ADDTO` on one TEXTLINE).
 4. Prefer **dedicated** TRIG ids; do not overwrite shared POST-FORM used by siblings.
