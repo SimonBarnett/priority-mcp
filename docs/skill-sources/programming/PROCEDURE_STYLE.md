@@ -69,6 +69,10 @@ runtime is wrong.
 Split across multiple TEXTORD lines. Count characters before INSERT/UPDATE.
 See also msg 154 resync hygiene in `MSG154_OPTIMISTIC_LOCK.md`.
 
+## Shifted quantity (CAST IRON)
+
+`QUANT` / `TQUANT` are shifted integers: SQL `bigint`, dictionary `INT` width 17, precision 3. Stored `1000` displays as `1.000`. Sum them into a column of the same definition. Initialise with `:QTY = 0` and `SELECT SUM(QUANT) INTO :QTY`. Do not use `0.0` and do not divide by 1000. Detail: `SHIFTED_INTEGERS.md`.
+
 ## Form level prefixes (CAST IRON)
 
 In a form trigger, the dollars before the dot select which form the column belongs to:
