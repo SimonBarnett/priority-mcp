@@ -18,11 +18,30 @@
 | priority-mcp | D4 | #841 | Digest: Shell recording in the DEV loop |
 | bobiverse | D5 | #10025 | Digest: airc relay transport (vendors CLI); Depends-on #9128 |
 | priority-mcp | D6 | #842 | Digest: MCP tools bind to in-repo CLI |
-| priority-mcp | FR-A | #836 | Verb contract doc + JSON Schema + C:\passwords secret paths |
-| priority-mcp | FR-B | #837 | CLI auth mode password (tabula) alongside Bearer/PAT |
+| priority-mcp | D0 | #836 | Verb contract + JSON Schema + C:\passwords |
+| priority-mcp | D0 | #837 | password (tabula) auth |
+| priority-mcp | D0 | #844 | promote shared thin WCF CLI contract |
+| priority-mcp | D0 | #845 | pin priority-web-sdk + vendor procedure doc |
+| priority-mcp | D0 | #846 | --dry-run and allowlist refuse parity |
+| priority-mcp | D1 | #847 | prepare form\|procedure\|report\|interface JSON + gates |
+| priority-mcp | D1 | #848 | INSTALL live prepare tabula + SaaS Bearer |
+| priority-mcp | D1 | #849 | document airc vendor-bump before default switch |
+| priority-mcp | D2 | #850 | form start smoke verb |
+| priority-mcp | D2 | #851 | proc start / report run smoke |
+| priority-mcp | D3 | #852 | table create via Web SDK without sqlProfile |
+| priority-mcp | D3 | #853 | create form/procedure/report/interface stubs |
+| priority-mcp | D3 | #854 | edit+prepare only named entity |
+| priority-mcp | D4 | #855 | dev-cycle helper create-prepare-smoke-shell |
+| priority-mcp | D4 | #856 | document TAKE into Version Revision |
+| bobiverse | D5 | #10026 | vendor pin CLI into airc/priority-worker |
+| bobiverse | D5 | #10027 | PRIORITY verbs call vendored CLI |
+| bobiverse | D5 | #10028 | INSTALL live HR Smith tabula prepare via relay |
+| bobiverse | D5 | #10029 | retire SOAP/WINRUN prepare defaults |
+| priority-mcp | D6 | #857 | MCP tools wrap thin CLI |
+| priority-mcp | D6 | #858 | agent playbook: FR on CLI fail; no SOAP hand-walk |
 | priority-mcp | docs PR | #833 | Park vision + FR index (merged) |
 
-Child FRs under D1–D6 remain unfiled until each digest is sliced (anti-omnibus).
+CAST IRON file-all: every nested Digest and every child FR filed same turn. Anti-omnibus = small Goal/Deliverables/Testable FRs for non-frontier seats (not “defer FRs”).
 
 ## Ultimate objective
 
