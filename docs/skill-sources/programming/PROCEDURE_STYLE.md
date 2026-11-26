@@ -59,6 +59,20 @@ runtime is wrong.
 Split across multiple TEXTORD lines. Count characters before INSERT/UPDATE.
 See also msg 154 resync hygiene in `MSG154_OPTIMISTIC_LOCK.md`.
 
+## Form level prefixes (CAST IRON)
+
+In a form trigger, the dollars before the dot select which form the column belongs to:
+
+| Prefix | Form |
+|--------|------|
+| `:$.COL` | The form the trigger is on |
+| `:$$.COL` | The parent form |
+| `:$$$.COL` | The parent of the parent |
+
+Each extra `$` walks one level up. A subform that needs the parent's key reads `:$$.PART` (or the parent's key column), not `:$.PART`. `:$.PART` is a column on the subform itself.
+
+`FORMCLMNSA` join expressions use the same prefixes (`= :$$.COL`).
+
 ## :VAR type consistency (CAST IRON)
 
 Priority Form Prep fails with:
