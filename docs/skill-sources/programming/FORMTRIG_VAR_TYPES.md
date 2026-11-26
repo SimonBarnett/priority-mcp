@@ -48,6 +48,8 @@ SELECT 0.0 + SUM(QUANT) INTO :QTY FROM <movement table>
 
 Do not assign an INT `:VAR` into the REAL `:VAR`. A second `:QTY = 0` later in the same trigger reintroduces the integer.
 
+A shifted quantity is the other way around. `:QTY = 0` and `SUM` of `QUANT` are INT. `SELECT :QTY - :QEX INTO :QTY FROM DUMMY` is REAL. That is the same error. Use `:QTY = :QTY - :QEX`. See `SHIFTED_INTEGERS.md`.
+
 ## Standard trigger ids
 
 `system.TRIGGERS` is the name map. On a current on-prem dictionary:

@@ -21,3 +21,11 @@ SELECT SUM(QUANT) INTO :QTY FROM <movement table> WHERE ...
 ```
 
 Do not add `0.0`. Do not divide by 1000. Both turn the value into a real. The extra zeros are already in the stored integer, so folding them into a REAL or a narrow integer overflows. The form displays the business quantity because the column precision is 3.
+
+`SELECT :QTY - :OTHER INTO :QTY FROM DUMMY` is a real expression. `:QTY = 0` and `SUM` of an INT quantity are integers. Form Prep then reports `Variable with two different types : QTY`. Subtract with an integer assignment:
+
+```
+:QTY = :QTY - :QEX;
+```
+
+`REALQUANT` is only for a real result (quantity times a real price). It is not the way to store the sum.
