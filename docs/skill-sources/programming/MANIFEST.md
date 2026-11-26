@@ -21,6 +21,8 @@ FR: `docs/feature-request-eshbel-priority-programming-harvest-2026-09-24.md`
 | SAAS_WCF_CLIENT.md | priority-saas-wcf | Allowlist-gated SaaS Web SDK client (accessToken); probe/session/form |
 | IGNORE_DUP_KEY.md | priority-dictionary-sql / priority-create-table | Tabula unique indexes must use IGNORE_DUP_KEY=ON |
 | FORMCLMNSA_JOINS.md | priority-dictionary-sql / priority-formprep | Child FORMCLMNSA `= :$$.COL`; joins survive Form Prep |
+| FORMTRIG_VAR_TYPES.md | priority-procedure-style | One type per :VAR; INT 0 vs REAL 0.0; TRIG -1 is CHOOSE-FIELD, PRE-FORM is 7 |
+| FORMPREP_SHADOW_TABLES.md | priority-formprep-shadow-tables | T$$ shadow; parent d{parent}.crs access denied (5); TYPE=F is not console prepare |
 | INDEXES_TYPE_A_IDENTITY.md | priority-dictionary-sql | IDENTITY columns keep INDEXES TYPE=A (8102 if U) |
 | MSG154_OPTIMISTIC_LOCK.md | priority-form-engineering / procedure-style | msg 154: mid-edit :$1 race; nullable form cols; PRE-UPDATE resync hygiene; FORMTRIGTEXT 68-char lines. Custom work-order close balance writes route to priority-service-desk-record-modified-custom-close instead. |
 
