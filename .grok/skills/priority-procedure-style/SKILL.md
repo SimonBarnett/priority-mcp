@@ -28,7 +28,7 @@ Authoring or heavily editing form triggers, SQLI procedures, or #INCLUDE bodies.
 4. Prefer **dedicated** TRIG ids; do not overwrite shared POST-FORM used by siblings.
 5. Customer prefix; copy vendor — do not edit vendor in place.
 6. **Shifted quantities stay shifted.** `INT` precision 3, SQL bigint. `SUM` into the same kind of column. `:QTY = 0`, never `0.0`, never divide by 1000, and never `SELECT :QTY - :X INTO :QTY FROM DUMMY` (that expression is REAL). Use `:QTY = :QTY - :X`. See `SHIFTED_INTEGERS.md`.
-7. **One type per `:VAR` name.** Form Prep error `Variable with two different types : X` means `:X` was used as CHAR and INT/REAL, or as INT and REAL, in the same compile unit. A shifted quantity stays INT (`:QTY = 0`). A REAL target uses `:QTY = 0.0`. Rename CHAR clashes (e.g. `:DWFIXSORT` vs numeric `:SORT`). See `FORMTRIG_VAR_TYPES.md`.
+7. **One type per `:VAR` name.** Form Prep error `Variable with two different types : X` means `:X` was used as CHAR and INT/REAL, or as INT and REAL, in the same compile unit. A shifted quantity stays INT. Form Prep types `SUM` of it as real, so store `INTQUANT(REALQUANT(SUM(...)))`. A REAL target uses `:QTY = 0.0`. Rename CHAR clashes (e.g. `:DWFIXSORT` vs numeric `:SORT`). See `FORMTRIG_VAR_TYPES.md`.
 7b. **PRE-FORM is not TRIG -1.** On a current dictionary TRIG -1 is CHOOSE-FIELD and TRIG 7 is PRE-FORM. Read `TRIGGERS.TRIGNAME` before inserting `FORMTRIG`.
 7a. **`:$.` is this form, `:$$.` is the parent, `:$$$.` is the grandparent.** Each extra `$` is one level up. A subform reads the parent key as `:$$.COL`, not `:$.COL`.
 8. **`FORMTRIGTEXT` / `PROGRAMSTEXT` max ~68 chars per line.** Split long SQL; truncated INTO lists break runtime after a clean Prepare.

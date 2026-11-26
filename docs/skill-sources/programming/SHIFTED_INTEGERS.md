@@ -22,10 +22,23 @@ SELECT SUM(QUANT) INTO :QTY FROM <movement table> WHERE ...
 
 Do not add `0.0`. Do not divide by 1000. Both turn the value into a real. The extra zeros are already in the stored integer, so folding them into a REAL or a narrow integer overflows. The form displays the business quantity because the column precision is 3.
 
-`SELECT :QTY - :OTHER INTO :QTY FROM DUMMY` is a real expression. `:QTY = 0` and `SUM` of an INT quantity are integers. Form Prep then reports `Variable with two different types : QTY`. Subtract with an integer assignment:
+Form Prep types `SUM` of that INT as **real**. Every integer write of the same variable is then reported on its own. Three writes (`:QTY = 0`, a second `:QTY = 0`, and `:QTY = :QTY - :QEX`) produce the message three times:
 
 ```
-:QTY = :QTY - :QEX;
+Variable with two different types : QTY
 ```
 
-`REALQUANT` is only for a real result (quantity times a real price). It is not the way to store the sum.
+`SELECT :QTY - :QEX INTO :QTY FROM DUMMY` is also real. An assignment of that subtraction does not clear the error once `SUM` has typed the variable real.
+
+Bring the value back to a shifted integer with the SDK pair `REALQUANT` / `INTQUANT`. `INTQUANT` is the only write, apart from `:QTY = 0`:
+
+```
+:QTY = 0;
+SELECT INTQUANT(REALQUANT(SUM(QUANT))) INTO :QTY
+FROM <movement table> WHERE ...
+:NET = 0;
+SELECT INTQUANT(REALQUANT(:QTY) - REALQUANT(:QEX))
+INTO :NET FROM DUMMY;
+```
+
+Insert `:NET`. Do not put `:QTY` in the same `SELECT` list as a CHAR literal; that is a second type. `REALQUANT` alone is for a real result (quantity times a price), not for the stored column.
