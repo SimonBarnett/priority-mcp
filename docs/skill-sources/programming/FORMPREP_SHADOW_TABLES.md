@@ -28,6 +28,19 @@ Never SQL-flip `UPD=N`.
 | Interactive WINRUN FORMPREP | `WINACTIV -P FORMPREP [FormName]`; no `-nbg`, no `-T` |
 | Agent WINRUN | Often exits 0 with no EXECPREPLOCK change if other winactiv busy / non-interactive |
 | `bin\formprep.exe` | Often "Can't connect to SQL Server - authorization failed" (no Integrated Security) — avoid |
+| Console `PRIORITY prepare <ENAME>` | Prepares TYPE=P (and sometimes TYPE=R). TYPE=F returns `reason=not_type_p`. Use Form Generator or `formprep.exe -g <ENAME>` from an interactive desktop. |
+
+## Parent `.crs` access denied (5)
+
+Preparing a subform rewrites the parent compiled file `system\prep\d{parent T$EXEC}.crs` (the number is the parent's `T$EXEC`, not the child's).
+
+```
+Can't create file <PriorityRoot>/system/prep/d<parent>.crs access is denied (5)
+```
+
+Typical cause: `formprep.exe -g <child>` runs as a Windows user who is in Administrators, but the token is not elevated. `system\prep` gives Users read and execute. Container-only write bits do not allow creating or replacing a file in that directory. An error dialog that is already open does not see a later ACL change.
+
+Fix: grant that Windows user Modify, object-inherit and container-inherit, on `system\prep` (propagate to existing files), then start the prepare again. Do not flip `EXECPREPLOCK.UPD` in SQL. Session 0 / LocalSystem still does not complete Form Prep.
 
 ## Environment
 
