@@ -74,13 +74,19 @@ approved shared rule version.
      `company.md`, or in `connections.md` / the work folder when the fact is
      route- or work-specific).
    - Credentials go in a connections file at
-     `C:\passwords\<client>-connections.txt` on MarchHare, never in the
-     repo. `connections.md` references that path and does not contain its
-     contents. Never dump that file to stdout or to agent tool logs, even when
-     intending to print only keys for redaction. Read it into variables only;
-     print lengths or boolean found flags. If a secret hits a log, stop and
-     tell the operator immediately. (See `harvest-agent-skills` and PRs 377
-     and 378.)
+     `C:\passwords\<client>-connections.txt` on MarchHare (or
+     `PRIORITY_AGENT_PASSWORDS` override), never in the repo. **Create the
+     passwords directory if it does not exist.** Populate from OData
+     `ZEMG_CUSTCONECT_SUBFORM` / `ZEMG_CUSTCONECTD_SUBFORM` using only rows
+     whose **active** flag is set; skip inactive rows. During the session,
+     PriorityAgent may **append** further connection details (airc console,
+     WCF / OData / PAT) into that file or siblings under the passwords dir —
+     same active-row rule when the source is the connections subform. `connections.md`
+     references that path and does not contain its contents. Never dump that
+     file to stdout or to agent tool logs, even when intending to print only
+     keys for redaction. Read it into variables only; print lengths or boolean
+     found flags. If a secret hits a log, stop and tell the operator immediately.
+     (See `harvest-agent-skills` and PRs 377 and 378; FR #813.)
    - Local credential writes need an authorized target machine and secure
      handling. Do not invent paths.
 7. Order connection routes as follows when more than one exists:

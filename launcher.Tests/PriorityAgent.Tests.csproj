@@ -36,6 +36,15 @@
     <Compile Include="../launcher/AircSession.cs" Link="AircSession.cs" />
     <Compile Include="../launcher/SessionLoginMeta.cs" Link="SessionLoginMeta.cs" />
     <Compile Include="../launcher/DesktopShortcut.cs" Link="DesktopShortcut.cs" />
+    <Compile Include="../launcher/GitcustContracts.cs" Link="GitcustContracts.cs" />
+    <Compile Include="../launcher/GitcustClient.cs" Link="GitcustClient.cs" />
+    <Compile Include="../launcher/ODataAllowlist.cs" Link="ODataAllowlist.cs" />
+    <Compile Include="../launcher/ODataCustomerConnections.cs" Link="ODataCustomerConnections.cs" />
+    <Compile Include="../launcher/CustomerConnectionsPasswordFile.cs" Link="CustomerConnectionsPasswordFile.cs" />
+    <Compile Include="../launcher/MedatechCredManSession.cs" Link="MedatechCredManSession.cs" />
+    <Compile Include="../launcher/PlanSkillDagMcp.cs" Link="PlanSkillDagMcp.cs" />
+    <Compile Include="../launcher/NewCustomerGitcustFlow.cs" Link="NewCustomerGitcustFlow.cs" />
+    <Compile Include="../launcher/ODataCustomerFetcher.cs" Link="ODataCustomerFetcher.cs" />
     <None Include="fixtures/**/*" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../launcher/agent-rules.md" Link="fixtures/agent-rules.md" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../launcher/README.md" Link="fixtures/launcher-README.md" CopyToOutputDirectory="PreserveNewest" />
