@@ -105,6 +105,9 @@ var checks = new List<(string Name, Action Run)>
     ("MRB-633 hostile: WithWait TTY emits glyphs then settle done", TestMrb633WaitTtyGlyphsAndSettle),
     ("FR-611: project PickList Down Enter selects first folder", TestFr611ProjectPickListFirstFolder),
     ("FR-611: project resolve customer-level / folder / New / cancel", TestFr611ProjectResolveRows),
+    ("FR-812: new subfolder is Plan MCP not a worker seat", TestFr812PlanSeat),
+    ("FR-812: kind is SC SO or WBS and title is in the gitcust body", TestFr812KindAndPayload),
+    ("FR-812: POST /gitcust mock HTTP OK", TestFr812PostGitcustMock),
     ("FR-611: redirected project pick 2 selects first folder", TestFr611ProjectRedirectedFirstFolder),
     ("FR-610: customer PickList Down Enter selects first customer", TestFr610CustomerPickListFirstCustomer),
     ("FR-610: customer resolve General / customer / New / cancel", TestFr610CustomerResolveRows),
@@ -1865,6 +1868,49 @@ static void TestFr611ProjectPickListFirstFolder()
     Assert(!haitchNew && project == "SC100", $"expected SC100, got project={project} haitch={haitchNew}");
 }
 
+static void TestFr812PlanSeat()
+{
+    string brief = NewSubfolderPlan.BuildPlanBrief("SimonBarnett/rees", "sc", "Replace the pump");
+    Assert(brief.Contains(NewSubfolderPlan.PlanMcpUrl, StringComparison.Ordinal), "brief names Plan MCP");
+    Assert(brief.Contains("Plan skill DAG", StringComparison.Ordinal), "brief loads Plan skill DAG");
+    Assert(brief.Contains("not a generic worker seat", StringComparison.Ordinal), "not a worker seat");
+    Assert(!brief.Contains("ask Simon what to work on", StringComparison.Ordinal), "not the generic worker prompt");
+    var args = NewSubfolderPlan.GrokAddPlanMcpArgs();
+    Assert(args.Contains(NewSubfolderPlan.PlanMcpUrl), "grok mcp add targets plan.ntsa.uk");
+    Assert(args.Contains(NewSubfolderPlan.PlanMcpName), "mcp name is plan");
+    Assert(!args.Any(a => a.Contains("worker", StringComparison.OrdinalIgnoreCase)), "argv is not a worker seat");
+}
+
+static void TestFr812KindAndPayload()
+{
+    Assert(NewSubfolderPlan.TryParseKind(" so ", out string so) && so == "SO", "SO");
+    Assert(NewSubfolderPlan.TryParseKind("WBS", out string wbs) && wbs == "WBS", "WBS");
+    Assert(NewSubfolderPlan.TryParseKind("SC", out string sc) && sc == "SC", "SC");
+    Assert(!NewSubfolderPlan.TryParseKind("XX", out _), "reject unknown kind");
+    Assert(!NewSubfolderPlan.TryParseKind("", out _), "reject empty kind");
+    string json = NewSubfolderPlan.BuildPayload("SimonBarnett/rees", "SC", "Site survey");
+    using var doc = JsonDocument.Parse(json);
+    Assert(doc.RootElement.GetProperty("action").GetString() == "new_subfolder", "action");
+    Assert(doc.RootElement.GetProperty("mode").GetString() == "plan", "mode plan");
+    Assert(doc.RootElement.GetProperty("kind").GetString() == "SC", "kind");
+    Assert(doc.RootElement.GetProperty("title").GetString() == "Site survey", "title");
+    Assert(doc.RootElement.GetProperty("customer").GetString() == "SimonBarnett/rees", "customer");
+    Assert(doc.RootElement.GetProperty("plan_mcp").GetString() == NewSubfolderPlan.PlanMcpUrl, "plan_mcp");
+    Assert(doc.RootElement.GetProperty("worker_seat").GetBoolean() == false, "worker_seat false");
+}
+
+static void TestFr812PostGitcustMock()
+{
+    string payload = NewSubfolderPlan.BuildPayload("SimonBarnett/rees", "WBS", "Phase 1");
+    var handler = new CaptureHandler(System.Net.HttpStatusCode.OK, "{\"ok\":true}");
+    var result = NewSubfolderPlan.Post("https://bob.ntsa.uk", payload, handler);
+    Assert(result.Ok && result.Status == 200, "mock HTTP OK");
+    Assert(result.Url.EndsWith("/bob/v1/gitcust", StringComparison.Ordinal), "gitcust path");
+    Assert(handler.Method == HttpMethod.Post, "POST");
+    Assert(handler.Body.Contains("\"title\":\"Phase 1\"", StringComparison.Ordinal), "posted title");
+    Assert(handler.Body.Contains(NewSubfolderPlan.PlanMcpUrl, StringComparison.Ordinal), "posted plan mcp");
+}
+
 static void TestFr611ProjectResolveRows()
 {
     var folders = new[] { "SC100", "SO9" };
@@ -2217,4 +2263,29 @@ sealed class FixtureAircTransport : IAircTransport
         UnselectedCalls++;
         return "default:" + operation;
     }
+}
+
+sealed class CaptureHandler : HttpMessageHandler
+{
+    readonly System.Net.HttpStatusCode _status;
+    readonly string _response;
+    public string Body = "";
+    public HttpMethod? Method;
+    public CaptureHandler(System.Net.HttpStatusCode status, string response)
+    {
+        _status = status;
+        _response = response;
+    }
+    protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        Method = request.Method;
+        Body = request.Content == null ? "" : request.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult();
+        return new HttpResponseMessage(_status)
+        {
+            Content = new StringContent(_response, Encoding.UTF8, "application/json"),
+        };
+    }
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        => Task.FromResult(Send(request, cancellationToken));
 }
