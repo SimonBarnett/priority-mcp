@@ -358,6 +358,9 @@ static class Program
 
         // ---- 3. project / service-call folder ----------------------------------------
         string? custDir = null, project = null, projectDir = null;
+        bool planMode = false;
+        string? planKind = null;
+        string? planTitle = null;
         if (cust != null)
         {
             Header($"[3] Customer {cust.FullName}: project / service-call folders");
@@ -370,7 +373,13 @@ static class Program
             if (ProjectArg != null)
             {
                 project = folders.FirstOrDefault(f => f.Equals(ProjectArg, StringComparison.OrdinalIgnoreCase));
-                if (project == null) { Err($"No folder '{ProjectArg}' in {cust.Name}."); return Haitch($"new project folder {ProjectArg} in {cust.FullName}"); }
+                if (project == null)
+                {
+                    Err($"No folder '{ProjectArg}' in {cust.Name}.");
+                    int planRc = BeginNewSubfolder(cust.FullName, ProjectArg, out planKind, out planTitle);
+                    if (planRc != 0) return planRc;
+                    planMode = true;
+                }
             }
             else if (!ListOnly && CustomerArg == null)
             {
@@ -384,7 +393,12 @@ static class Program
                     return 2;
                 }
                 if (haitchNew)
-                    return Haitch($"new project folder {Ask("Project / service-call name (e.g. SC263999): ")} in {cust.FullName}");
+                {
+                    // FR #812: new subfolder starts Plan mode, not a Haitch clipboard handoff.
+                    int planRc = BeginNewSubfolder(cust.FullName, null, out planKind, out planTitle);
+                    if (planRc != 0) return planRc;
+                    planMode = true;
+                }
             }
             if (project != null) projectDir = Path.Combine(custDir, project);
             if (project != null && !BobHours.IsAuthoritativeProjectFolder(project))
@@ -465,6 +479,14 @@ static class Program
             Info("FR #570: skipping Grok MCP registration for " + CliLaunch.KindName(ChosenCli));
             ChosenHelpText = CaptureCliHelp(ChosenExe);
         }
+        if (planMode && ChosenCli == CliKind.Grok && !DryRun)
+        {
+            int parc = ConsoleWait.WithWait("plan mcp", () =>
+                RunTo(ChosenExe, null, NewSubfolderPlan.GrokAddPlanMcpArgs()));
+            Check(parc == 0, "registered Plan MCP '" + NewSubfolderPlan.PlanMcpName + "' -> " + NewSubfolderPlan.PlanMcpUrl);
+        }
+        else if (planMode)
+            Info("Plan mode MCP " + NewSubfolderPlan.PlanMcpName + " " + NewSubfolderPlan.PlanMcpUrl + " (Plan skill DAG, not a worker seat)");
 
         string level = projectDir != null ? "project" : cust != null ? "customer" : "general";
         string workDir = projectDir ?? custDir ?? fomprep;
@@ -546,6 +568,10 @@ static class Program
         }
         if (cust != null) brief.AppendLine($"Customer: {cust.Name} = {cust.FullName}, clone {custDir}. Connection secrets (never commit/echo): {pwFile}.");
         if (project != null) brief.AppendLine($"Project / service call: {project} at {projectDir}.");
+        if (planMode)
+            brief.Clear().Append(NewSubfolderPlan.BuildPlanBrief(cust!.FullName, planKind!, planTitle!));
+        else
+        {
         var readFirst = new List<string> { Path.Combine(fomprep, "AGENTS.md") };
         if (custDir != null) readFirst.AddRange(new[] { Path.Combine(custDir, "AGENTS.md"), Path.Combine(custDir, "README.md") });
         if (projectDir != null) readFirst.AddRange(new[] { Path.Combine(projectDir, "README.md"), Path.Combine(projectDir, "log.md") });
@@ -553,6 +579,7 @@ static class Program
         brief.Append(Smoke
             ? "SMOKE TEST: do not read or change any file and do not contact any customer system. You may call the priority-catalog tool list_catalog once (read-only, local). Reply in at most 8 lines: the context level, customer, project; the priority-catalog tools you have and whether that server is connected (with the skill count list_catalog returned); whether Priority skills are visible; and what your launcher rules say about connecting to this customer's systems. Then stop."
             : $"Follow the launcher rules (harvest rule, secrets, WCF client, MANDATORY hours webhook idempotency_key priority-agent-{sessionId}). Then briefly confirm the context and ask Simon what to work on.");
+        }
 
         string rulesFile = Path.Combine(sessionDir, "rules.md");
         var wcfMeta = wcfConfig.Instances.Select(i => new { id = i.Id, host = i.Host, tenant = i.Tenant, company = i.Company, allowLive = i.AllowLive }).ToArray();
@@ -1297,6 +1324,54 @@ static class Program
         }
         src = $"embedded agent-rules.md (v{RulesVersion(embedded)})";
         return embedded;
+    }
+
+    /// <summary>FR #812: ask kind + title, POST /gitcust, then the caller launches Plan mode.</summary>
+    static int BeginNewSubfolder(string customerRepo, string? presetTitle, out string kind, out string title)
+    {
+        kind = "";
+        title = "";
+        Header("[3b] New subfolder — Plan mode");
+        Info("Plan MCP " + NewSubfolderPlan.PlanMcpUrl + " (Plan skill DAG, not a worker seat)");
+        string kindRaw = Ask("Kind (SC, SO, or WBS): ");
+        if (!NewSubfolderPlan.TryParseKind(kindRaw, out kind))
+        {
+            Err("Kind must be SC, SO, or WBS.");
+            Pause();
+            return 2;
+        }
+        title = string.IsNullOrWhiteSpace(presetTitle) ? Ask("Title: ") : presetTitle.Trim();
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            Err("Title is required.");
+            Pause();
+            return 2;
+        }
+        string payload = NewSubfolderPlan.BuildPayload(customerRepo, kind, title);
+        if (DryRun)
+        {
+            Info("dry-run: would POST " + NewSubfolderPlan.GitcustPath + " " + payload);
+            return 0;
+        }
+        NewSubfolderPlan.GitcustPostResult posted;
+        try
+        {
+            posted = NewSubfolderPlan.Post(NewSubfolderPlan.DefaultBobOrigin, payload);
+        }
+        catch (Exception ex)
+        {
+            Err("gitcust POST failed: " + ex.Message);
+            Pause();
+            return 1;
+        }
+        if (!posted.Ok)
+        {
+            Err("gitcust POST " + posted.Status + " " + Trunc(posted.Body, 200));
+            Pause();
+            return 1;
+        }
+        Check(true, "POST " + NewSubfolderPlan.GitcustPath + " " + posted.Status);
+        return 0;
     }
 
     // ------------------------------------------------------------------ Haitch handoff

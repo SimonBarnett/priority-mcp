@@ -98,9 +98,7 @@ PriorityAgent.exe --uninstall
    - **Project / service call**: one of the customer repo's top-level folders, skipping dot-folders.
      cwd is that folder.
 5. It loads **Priority SaaS WCF allowlist** rows (FR #348): default %USERPROFILE%\.priority-saas-wcf\instances.json (env PRIORITY_SAAS_WCF_INSTANCES), or a wcfInstancesPath / SaaS-shaped list in .priority-agent.json (project overrides customer). Each row has id, host, tenant, company, user, tokenFile, allowLive (see v2/apps/priority-saas-wcf/instances.example.json). Credentials and tokens are never stored there. The launcher writes a session-only wcf-instances.json and injects instructions for bin/priority-wcf.mjs + skill priority-saas-wcf (not bobiverse #6026 priority_wcf.py). Legacy airc / airc_console fields still load without error and print a warning that they are ignored. --airc, --no-airc and --airc-console are rejected with a clear "removed; use the WCF client" message.
-6. **New customer / new project** never creates anything. It prints `Ask Haitch: new customer repo for X`
-   or `Ask Haitch: new project folder Y in <repo>`, copies the line to the clipboard and exits. Haitch creates it
-   from `launcher/customer-setup`. A project folder must already be an authoritative `SCxxxxxx` or `SOxxxxxx`.
+6. **New customer** never creates a repo. It prints `Ask Haitch: new customer repo for X`, copies the line to the clipboard and exits. Haitch creates it from `launcher/customer-setup`. **New subfolder** (FR #812) asks kind (SC/SO/WBS) and a free-text title, POSTs the task to `https://bob.ntsa.uk/bob/v1/gitcust`, and starts **Plan mode** with the Plan MCP at `https://plan.ntsa.uk/mcp` (Plan skill DAG, not a worker seat). An existing project folder must already be an authoritative `SCxxxxxx` or `SOxxxxxx`.
    The Medatech booking id and WBS go in that folder's `project.md`, not in the folder name.
 7. It checks fuel like `ce-dayworks/scripts/Start-DayWorks.ps1`.
    - Source: the Bob report `machines.<machine>.pcent["grok-build"]` (xAI weekly

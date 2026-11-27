@@ -27,6 +27,7 @@
     <Compile Include="../launcher/FuelReportFetch.cs" Link="FuelReportFetch.cs" />
     <Compile Include="../launcher/FuelMeter.cs" Link="FuelMeter.cs" />
     <Compile Include="../launcher/ProjectFolderPick.cs" Link="ProjectFolderPick.cs" />
+    <Compile Include="../launcher/NewSubfolderPlan.cs" Link="NewSubfolderPlan.cs" />
     <Compile Include="../launcher/CustomerPick.cs" Link="CustomerPick.cs" />
     <Compile Include="../launcher/AircHost.cs" Link="AircHost.cs" />
     <Compile Include="../launcher/AircHostFetch.cs" Link="AircHostFetch.cs" />
