@@ -22,11 +22,13 @@ proof of **which step** did it.
 
 1. **`FROM DUMMY`** — Priority SELECT needs a FROM; use `DUMMY` to dump `:$.`
    form variables.
-2. **One TEXTLINE** — whole `SELECT … FROM DUMMY FORMAT ADDTO '…';` on a
-   single `FORMCLTRIGTEXT`/`FORMTRIGTEXT` line. Split SELECT / FORMAT → Form
-   Prep error at `FORMAT`.
+2. **Path is relative to `bin.95`.** `'../../file'` lands in the Priority
+   root. Do not use an absolute path outside that tree.
 3. **≤ 68 characters** on classic `TEXT` (nvarchar(68)); Msg 8152 if longer.
-   Short tags (`'A1'`) and short paths (`../../tmp/s.txt`).
+   One line when it fits: `SELECT 'tag',:$.COL FROM DUMMY FORMAT ADDTO '../../tmp/s.txt';`
+   When it does not, put the path in a CHAR variable and continue:
+   `:DBG = '../../USAGE.DBG';` then `SELECT :$.COL, :$$.COL FROM DUMMY` /
+   `FORMAT ADDTO :DBG ;`. The SELECT line must include `FROM DUMMY`.
 4. Probe **before and after** each suspect POST / `#INCLUDE` / CHECK; read the
    ADDTO file in order; strip probes after diagnosis and Form Prep again.
 

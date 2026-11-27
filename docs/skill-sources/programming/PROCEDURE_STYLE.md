@@ -16,11 +16,21 @@ Priority-generic. CE examples are labeled.
 
 When editing existing stack triggers, bring headers up to this standard.
 
-## Debug pattern (CE example)
+## Debug on every step (CAST IRON)
 
-1. `#INCLUDE func/ZCLA_DEBUGUSR` (or site equivalent).
-2. Before includes, set `:RUN_BY` to a string naming Form/proc / column / trigger-or-step.
-3. Gate file logs on `:DEBUG = 1` writing to `:DEBUGFILE`.
+A new or rewritten trigger ships with a debug write on **every step**. Do not wait for a failure and do not gate the writes behind `:DEBUG = 0`.
+
+The file path is relative to `bin.95`. `'../../file'` is a file in the Priority root. Do not write the debug file to an absolute path outside that tree.
+
+```
+:DBG = '../../file';
+SELECT 'STEP', :VAR FROM DUMMY
+FORMAT ADDTO :DBG ;
+```
+
+Tag each step (`'PART'`, `'DEL'`, `'LOOP'`, `'INS'`, `'EXIT'`). `SELECT` needs `FROM DUMMY`. `FORMAT ADDTO` may be the next TEXT line when the probe does not fit in 68 characters. Remove the probes only when the user says the diagnosis is finished, then prepare again.
+
+Site `#INCLUDE` debug files remain available. They do not replace the per-step `FORMAT ADDTO` lines.
 
 ## FORMAT ADDTO FROM DUMMY (field wipe / chronological probes)
 
@@ -58,6 +68,24 @@ runtime is wrong.
 
 Split across multiple TEXTORD lines. Count characters before INSERT/UPDATE.
 See also msg 154 resync hygiene in `MSG154_OPTIMISTIC_LOCK.md`.
+
+## Shifted quantity (CAST IRON)
+
+`QUANT` / `TQUANT` are shifted integers: SQL `bigint`, dictionary `INT` width 17, precision 3. Stored `1000` displays as `1.000`. Sum them into a column of the same definition. Initialise with `:QTY = 0` and `SELECT SUM(QUANT) INTO :QTY`. Do not use `0.0` and do not divide by 1000. Detail: `SHIFTED_INTEGERS.md`.
+
+## Form level prefixes (CAST IRON)
+
+In a form trigger, the dollars before the dot select which form the column belongs to:
+
+| Prefix | Form |
+|--------|------|
+| `:$.COL` | The form the trigger is on |
+| `:$$.COL` | The parent form |
+| `:$$$.COL` | The parent of the parent |
+
+Each extra `$` walks one level up. A subform that needs the parent's key reads `:$$.PART` (or the parent's key column), not `:$.PART`. `:$.PART` is a column on the subform itself.
+
+`FORMCLMNSA` join expressions use the same prefixes (`= :$$.COL`).
 
 ## :VAR type consistency (CAST IRON)
 

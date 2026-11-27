@@ -22,17 +22,21 @@ Authoring or heavily editing form triggers, SQLI procedures, or #INCLUDE bodies.
 ## Hard rules
 
 1. Banner with name + one-line purpose; `/* Inputs */` / `/* Outputs */` listing `:VAR`s; Heading / Sub-heading sections.
+1a. **Debug every step.** Each step of a new trigger writes `FORMAT ADDTO` to a `bin.95`-relative file (`'../../file'` in the Priority root). Tag the step. Do not gate it off and do not use a path outside the Priority tree. See `PROCEDURE_STYLE.md`.
 2. Update headers on existing stack triggers you touch.
 3. Debug: site debug `#INCLUDE`; set `:RUN_BY` before includes; gate on `:DEBUG=1` → `:DEBUGFILE`. Field-wipe probes: **priority-format-addto-debug** (`SELECT 'tag',:$.COL FROM DUMMY FORMAT ADDTO` on one TEXTLINE).
 4. Prefer **dedicated** TRIG ids; do not overwrite shared POST-FORM used by siblings.
 5. Customer prefix; copy vendor — do not edit vendor in place.
-6. **One type per `:VAR` name.** Form Prep error `Variable with two different types : X` means `:X` was used as CHAR and INT/REAL in the same compile unit. Rename (e.g. CHAR `:DWFIXSORT` vs numeric `:SORT`). See `PROCEDURE_STYLE.md`.
-7. **`FORMTRIGTEXT` / `PROGRAMSTEXT` max ~68 chars per line.** Split long SQL; truncated INTO lists break runtime after a clean Prepare.
-8. **Multi-char strings use `''`, not `'\0'`.** `:VAR = '\0'` is a one-char boolean (Y/`\0`). Init and compare work-order / part / status strings with `''`.
-9. **Declare PROGPARAM on every step that reads `:$.NAME`** (INPUT and SQLI). When converting INPUT to plain CHAR params, clear leftover INPUT `PROGRAMSTEXT` (old LINK/ERRMSG).
-10. **`GOTO` forward only; `LOOP` for backward** jumps to an earlier LABEL.
-11. **Report work tables:** prefer `T$TABLE` / `REPTABLES` without SQLI `LINK` / report `FILE` PROGPARAM. Orphan FILE params cause the system *file links* message (not your TRIGMSG).
-12. When editing report expressions, clear **`REPCLMNSA.EXPR`** as well as `REPCLMNSTEXT`.
+6. **Shifted quantities stay shifted.** `INT` precision 3, SQL bigint. `SUM` into the same kind of column. `:QTY = 0`, never `0.0`, never divide by 1000, and never `SELECT :QTY - :X INTO :QTY FROM DUMMY` (that expression is REAL). Use `:QTY = :QTY - :X`. See `SHIFTED_INTEGERS.md`.
+7. **One type per `:VAR` name.** Form Prep error `Variable with two different types : X` means `:X` was used as CHAR and INT/REAL, or as INT and REAL, in the same compile unit. A shifted quantity stays INT. Form Prep types `SUM` of it as real, so store `INTQUANT(REALQUANT(SUM(...)))`. A REAL target uses `:QTY = 0.0`. Rename CHAR clashes (e.g. `:DWFIXSORT` vs numeric `:SORT`). See `FORMTRIG_VAR_TYPES.md`.
+7b. **PRE-FORM is not TRIG -1.** On a current dictionary TRIG -1 is CHOOSE-FIELD and TRIG 7 is PRE-FORM. Read `TRIGGERS.TRIGNAME` before inserting `FORMTRIG`.
+7a. **`:$.` is this form, `:$$.` is the parent, `:$$$.` is the grandparent.** Each extra `$` is one level up. A subform reads the parent key as `:$$.COL`, not `:$.COL`.
+8. **`FORMTRIGTEXT` / `PROGRAMSTEXT` max ~68 chars per line.** Split long SQL; truncated INTO lists break runtime after a clean Prepare.
+9. **Multi-char strings use `''`, not `'\0'`.** `:VAR = '\0'` is a one-char boolean (Y/`\0`). Init and compare work-order / part / status strings with `''`.
+10. **Declare PROGPARAM on every step that reads `:$.NAME`** (INPUT and SQLI). When converting INPUT to plain CHAR params, clear leftover INPUT `PROGRAMSTEXT` (old LINK/ERRMSG).
+11. **`GOTO` forward only; `LOOP` for backward** jumps to an earlier LABEL.
+12. **Report work tables:** prefer `T$TABLE` / `REPTABLES` without SQLI `LINK` / report `FILE` PROGPARAM. Orphan FILE params cause the system *file links* message (not your TRIGMSG).
+13. When editing report expressions, clear **`REPCLMNSA.EXPR`** as well as `REPCLMNSTEXT`.
 
 ## Related
 
