@@ -11,8 +11,6 @@ using System.Text.RegularExpressions;
 
 namespace PriorityAgent;
 
-sealed record Customer(string Name, string FullName, string DefaultBranch, string Description);
-
 static class Program
 {
     const string Owner = "SimonBarnett";
@@ -361,11 +359,21 @@ static class Program
         if (cust != null)
         {
             Header($"[3] Customer {cust.FullName}: project / service-call folders");
-            custDir = EnsureClone(cust.Name, cust.FullName, cust.DefaultBranch, alwaysPull: !DryRun, preferClean: false);
-            if (custDir == null) { Err("Customer clone unavailable."); Pause(); return 1; }
-            var folders = Directory.GetDirectories(custDir).Select(Path.GetFileName).Where(n => n != null && !n.StartsWith('.'))
+            List<string>? folders = null;
+            if (GitcustSnap != null)
+            {
+                folders = GitcustCatalog.Folders(GitcustSnap, cust.Name);
+                if (folders.Count > 0)
+                    Check(true, $"{folders.Count} folder(s) from /gitcust");
+            }
+            if (folders == null || folders.Count == 0)
+            {
+                custDir = EnsureClone(cust.Name, cust.FullName, cust.DefaultBranch, alwaysPull: !DryRun, preferClean: false);
+                if (custDir == null) { Err("Customer clone unavailable."); Pause(); return 1; }
+                folders = Directory.GetDirectories(custDir).Select(Path.GetFileName).Where(n => n != null && !n.StartsWith('.'))
                                    .Cast<string>().OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
-            Check(true, $"{folders.Count} folder(s) in {custDir} (dot-folders skipped)");
+                Check(true, $"{folders.Count} folder(s) in {custDir} (dot-folders skipped)");
+            }
 
             if (ProjectArg != null)
             {
@@ -386,7 +394,13 @@ static class Program
                 if (haitchNew)
                     return Haitch($"new project folder {Ask("Project / service-call name (e.g. SC263999): ")} in {cust.FullName}");
             }
-            if (project != null) projectDir = Path.Combine(custDir, project);
+            // Folder names came from /gitcust. Clone only when this launch needs the tree.
+            if (project != null && custDir == null && !ListOnly)
+            {
+                custDir = EnsureClone(cust.Name, cust.FullName, cust.DefaultBranch, alwaysPull: !DryRun, preferClean: false);
+                if (custDir == null) { Err("Customer clone unavailable."); Pause(); return 1; }
+            }
+            if (project != null && custDir != null) projectDir = Path.Combine(custDir, project);
             if (project != null && !BobHours.IsAuthoritativeProjectFolder(project))
                 Warn("project folder '" + project + "' is not an SCxxxxxx or SOxxxxxx id. Left unchanged. Hours for this folder stay unresolved until an authoritative id is evidenced.");
         }
@@ -407,6 +421,14 @@ static class Program
                 + " wbs " + loaded.WbsStatus + " (not sent on the hours report)");
         }
         if (ListOnly) { Summary(); Pause(); return Fails == 0 ? 0 : 1; }
+
+        // Customer-level sessions still work in the clone. /gitcust only replaced the listing.
+        if (cust != null && custDir == null)
+        {
+            custDir = EnsureClone(cust.Name, cust.FullName, cust.DefaultBranch, alwaysPull: !DryRun, preferClean: false);
+            if (custDir == null) { Err("Customer clone unavailable."); Pause(); return 1; }
+            if (project != null) projectDir = Path.Combine(custDir, project);
+        }
 
         // ---- 3b. WCF instance config (FR #348; replaces airc remote-shell) -------------
         WcfConfig wcfConfig = WcfSupport.LoadConfig(projectDir, custDir);
@@ -998,8 +1020,18 @@ static class Program
         }
     }
 
+    static GitcustCatalog.Snapshot? GitcustSnap;
+
     static List<Customer> ListCustomers(bool forceRefresh = false)
     {
+        GitcustCatalog.Snapshot? snap = GitcustCatalog.TryLoad();
+        if (snap != null && snap.Customers.Count > 0)
+        {
+            GitcustSnap = snap;
+            Info($"customers from /gitcust ({snap.Customers.Count}, tasks {snap.Tasks.Count})");
+            return snap.Customers.ToList();
+        }
+
         // FR #793: short-TTL disk cache; --list / --refresh-customers force a live gh scan.
         TimeSpan ttl = CustomerListCache.ResolveTtl(Environment.GetEnvironmentVariable("PRIORITY_AGENT_CUSTOMERS_TTL_MIN"));
         string cachePath = Environment.GetEnvironmentVariable("PRIORITY_AGENT_CUSTOMERS_CACHE")

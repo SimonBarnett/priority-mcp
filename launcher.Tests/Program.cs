@@ -115,6 +115,7 @@ var checks = new List<(string Name, Action Run)>
     ("FR-642: ListCustomers gh failure throws inside WithWait (no done settle)", TestFr642ListCustomersFailThrowsForSettle),
     ("FR-793: customer cache loads within TTL and rejects stale/wrong topic", TestFr793CustomerCacheTtl),
     ("FR-793: --general skips ListCustomers; --list/--refresh force live", TestFr793DeferAndRefreshWired),
+    ("FR-810: /gitcust parse maps customers and SC/SO/WBS folders", TestFr810GitcustParse),
     ("FR-635: digest fixture maps several hosts including domain", TestFr635ParseSeveralHosts),
     ("FR-635: empty roster message without PickList", TestFr635EmptyRosterMessage),
     ("FR-635: unreachable roster errors with retry hint", TestFr635UnreachableRoster),
@@ -2068,7 +2069,7 @@ static void TestFr615ListCustomersUsesWithWait()
     string src = ReadLauncherProgramSrc();
     int method = src.IndexOf("static List<Customer> ListCustomers(", StringComparison.Ordinal);
     Assert(method >= 0, "ListCustomers method missing");
-    string window = src.Substring(method, Math.Min(2500, src.Length - method));
+    string window = src.Substring(method, Math.Min(4500, src.Length - method));
     int wait = window.IndexOf("ConsoleWait.WithWait", StringComparison.Ordinal);
     int capture = window.IndexOf("Capture(Gh", StringComparison.Ordinal);
     Assert(wait >= 0, "ListCustomers must wrap with ConsoleWait.WithWait (S3 spinner on gh api)");
@@ -2082,7 +2083,7 @@ static void TestFr615ListCustomersFailurePathPin()
     string src = ReadLauncherProgramSrc();
     int method = src.IndexOf("static List<Customer> ListCustomers(", StringComparison.Ordinal);
     Assert(method >= 0, "ListCustomers method missing");
-    string window = src.Substring(method, Math.Min(2500, src.Length - method));
+    string window = src.Substring(method, Math.Min(4500, src.Length - method));
     Assert(window.Contains("gh api failed", StringComparison.Ordinal), "failure must Err with gh api failed");
     Assert(window.Contains("return new()", StringComparison.Ordinal) || window.Contains("return new List", StringComparison.Ordinal),
         "failure must return empty list");
@@ -2094,7 +2095,7 @@ static void TestFr642ListCustomersFailThrowsForSettle()
     string src = ReadLauncherProgramSrc();
     int method = src.IndexOf("static List<Customer> ListCustomers(", StringComparison.Ordinal);
     Assert(method >= 0, "ListCustomers method missing");
-    string window = src.Substring(method, Math.Min(2500, src.Length - method));
+    string window = src.Substring(method, Math.Min(4500, src.Length - method));
     int wait = window.IndexOf("ConsoleWait.WithWait", StringComparison.Ordinal);
     int err = window.IndexOf("Err(\"gh api failed", StringComparison.Ordinal);
     int thr = window.IndexOf("throw new InvalidOperationException", StringComparison.Ordinal);
@@ -2121,6 +2122,28 @@ static void TestFr793CustomerCacheTtl()
     Assert(!CustomerListCache.TryLoad(path, "other-topic", now, TimeSpan.FromMinutes(30), out _, out _),
         "wrong topic must miss");
     Assert(CustomerListCache.ResolveTtl(null) == TimeSpan.FromMinutes(30), "default TTL 30m");
+}
+
+static void TestFr810GitcustParse()
+{
+    string json = """
+        {"customers":[{"name":"rees","path":"rees"}],"tasks":[
+          {"customer":"rees","kind":"sc","title":"SC263182","path":"rees/SC263182"},
+          {"customer":"rees","kind":"wbs","title":"Usage","path":"rees/120-UsageAv"}
+        ]}
+        """;
+    var snap = GitcustCatalog.Parse(json);
+    Assert(snap.Customers.Count == 1 && snap.Customers[0].FullName == "SimonBarnett/rees", "customer from catalog");
+    var folders = GitcustCatalog.Folders(snap, "rees");
+    Assert(folders.Count == 2 && folders[0] == "120-UsageAv" && folders[1] == "SC263182", "folder names, not titles");
+    Assert(snap.Tasks.Any(t => t.Folder == "120-UsageAv" && t.Title == "Usage" && t.Kind == "wbs"), "wbs free-text title kept");
+    string src = ReadLauncherProgramSrc();
+    int method = src.IndexOf("static List<Customer> ListCustomers(bool forceRefresh", StringComparison.Ordinal);
+    Assert(method >= 0, "ListCustomers present");
+    string window = src.Substring(method, Math.Min(1800, src.Length - method));
+    int git = window.IndexOf("GitcustCatalog.TryLoad", StringComparison.Ordinal);
+    int gh = window.IndexOf("gh api", StringComparison.Ordinal);
+    Assert(git >= 0 && gh > git, "gitcust before gh api fallback");
 }
 
 static void TestFr793DeferAndRefreshWired()
