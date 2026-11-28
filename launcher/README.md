@@ -83,13 +83,15 @@ PriorityAgent.exe --uninstall
      A timestamped `.bak-priorityagent-*` backup is written before any change.
    - This is needed because Grok only reads project skills from the cwd's own repo, and a
      customer repo is a different repo. This makes the Priority skills visible to **all** Grok sessions on the machine.
-3. It **loads the customer repos**: SimonBarnett repos tagged with the GitHub topic **`priority-customer`**.
-   It uses the REST API through `gh api`, with no search-index lag. **FR #793:** successful lists are
-   cached under `%LOCALAPPDATA%\PriorityAgent\customers-topic-cache.json` (TTL default 30 minutes via
+3. It **loads the customer repos** from Bob `GET /bob/v1/gitcust` (`https://bob.ntsa.uk/bob/v1/gitcust`,
+   override with `PRIORITY_AGENT_GITCUST_URL`). Customers and their top-level folders (service call,
+   sales order, WBS — the same names the picker used to read from the clone) come from that catalog.
+   A launch that needs the working tree still clones. If the catalog is empty or unreachable, it falls
+   back to SimonBarnett repos tagged **`priority-customer`** via `gh api`. **FR #793:** that fallback
+   is cached under `%LOCALAPPDATA%\PriorityAgent\customers-topic-cache.json` (TTL default 30 minutes via
    `PRIORITY_AGENT_CUSTOMERS_TTL_MIN`; override path with `PRIORITY_AGENT_CUSTOMERS_CACHE`).
-   `--general` skips the scan; `--list` / `--refresh-customers` force a live refresh; a `--customer`
-   miss on a warm cache refreshes once before failing. `--list` prints the numbered table (name, clone
-   path, description). Interactive mode skips that dump and goes straight to **Pick customer**
+   `--general` skips the scan; a `--customer` miss on a warm cache refreshes once from gh before failing.
+   `--list` prints the numbered table. Interactive mode skips that dump and goes straight to **Pick customer**
    (FR #675 — no duplicate list).
 4. You pick one of three contexts:
    - **General Priority**: cwd is the priority-mcp clone.
